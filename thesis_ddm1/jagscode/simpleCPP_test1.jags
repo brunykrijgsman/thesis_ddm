@@ -1,0 +1,42 @@
+
+model {
+    ##########
+    # Parameter priors
+    ##########
+    for (p in 1:nparts) {
+        #Boundary parameter (speed-accuracy tradeoff) per participant
+        alpha[p] ~ dnorm(1, pow(.5,-2))T(0, 3)
+
+        #Non-decision time per participant
+        ndt[p] ~ dnorm(.5, pow(.25,-2))T(0, 1)
+
+        #Start point bias towards choice A per participant
+        beta[p] ~ dnorm(.5, pow(.25,-2))T(0, 1)
+
+        #New parameter priors
+        mu_z[p] ~ dnorm(0, pow(2, -2))
+        sigma_z[p] ~ dnorm(1, pow(.5,-2))T(0, 3)
+        lambda[p] ~ dnorm(1, pow(.5,-2))
+        b[p] ~ dnorm(0, pow(2, -2))
+        eta[p] ~ dnorm(0.5, pow(.25,-2))T(0, 2)
+        P300noise[p] ~ dnorm(1, pow(.5,-2))T(0, 3)
+    }
+
+    ##########
+    # Model likelihood
+    ##########
+    for (i in 1:N) {
+        # Latent variable
+        z[i] ~ dnorm(mu_z[participant[i]], pow(sigma_z[participant[i]], -2))
+        
+        # Drift rate
+        delta[i] <- lambda[participant[i]] * z[i] + b[participant[i]] + eta[participant[i]]
+        
+        # DDM process (acc*RT)
+        y[i] ~ dwiener(alpha[participant[i]], ndt[participant[i]], 
+                       beta[participant[i]], delta[i])
+
+        # P300 measurement
+        P300[i] ~ dnorm(z[i], pow(P300noise[participant[i]], -2))
+    }
+}
