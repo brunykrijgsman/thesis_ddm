@@ -14,7 +14,7 @@ import sys
 
 # Initialize networks
 print("Initializing networks...")
-summary_net = SummaryNetwork()
+summary_net = SummaryNetwork(input_shape=(100, 2))
 inference_net = InferenceNetwork()
 amortizer = ContinuousApproximator(
     adapter=summary_net,
@@ -38,7 +38,9 @@ approximator.compile(optimizer=optimizer)
 def full_simulator(batch_size = 32, n_obs = 100):
     params = ddm_prior(batch_size)
     sims = batch_simulator(params, n_obs)
-    return {"parameters": params, "simulations": sims}
+    print(f"params shape: {params.shape}, dtype: {params.dtype}")
+    print(f"sims shape: {sims.shape}, dtype: {sims.dtype}")
+    return params, sims
 
 # Use these in make_simulator
 generative_model = make_simulator(full_simulator)
@@ -49,7 +51,7 @@ def prior_N(n_min=60, n_max=120):
 
 # Define the checkpoint callback to save the model during training
 checkpoint_callback = ModelCheckpoint(
-    'checkpoints/integrative_ddm_epoch_{epoch:02d}.h5', 
+    'checkpoints/integrative_ddm_epoch_{epoch:02d}.keras', 
     save_freq='epoch',  
     save_best_only=True,  
     verbose=1 
@@ -64,8 +66,7 @@ losses = approximator.fit(
     simulator=generative_model,
     callbacks=[checkpoint_callback],
     iterations_per_epoch=1000,
-    capacity=100,
-    n_obs=prior_N
+    n_obs=100
 )
 print("Training complete.")
 
