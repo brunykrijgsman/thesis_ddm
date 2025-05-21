@@ -9,36 +9,11 @@ from time import time
 import matplotlib.pyplot as plt
 import sys
 from numba import njit
+from scipy.stats import truncnorm
 
 # Configure environment
 if "KERAS_BACKEND" not in os.environ:
     os.environ["KERAS_BACKEND"] = "tensorflow"
-
-# =====================================================================================
-# Prior
-def ddm_prior(batch_size):
-    """
-    Prior distribution for the parameters of the DDM + P300 model.
-    Samples from the prior 'batch_size' times.
-    ----------
-    Returns:
-        samples: np.ndarray -- samples from the prior
-    """
-
-    # Parameters: alpha, tau, beta, mu_delta, eta_delta, gamma, sigma
-    # Alpha ~ U(0.8, 2.0)
-    # Tau ~ U(0.15, 0.6)
-    # Beta ~ U(0.3, 0.7)
-    # Mu_delta ~ N(0, 1)
-    # Eta_delta ~ U(0, 2)
-    # Gamma ~ N(1.25, 0.5)
-    # Sigma ~ U(0, 2)
-    low =  [0.8,  0.15, 0.3, -3.0, 0.0, -5.0, 0.1]
-    high = [2.0,  0.6, 0.7, 3.0, 2.0,  5.0, 1.5]
-    samples = np.random.uniform(low=low, high=high, size=(batch_size, len(low)))
-    
-    # Return samples 
-    return samples.astype(np.float32)
 
 # =====================================================================================
 # DDM simulation
@@ -67,7 +42,7 @@ def simulate_ddm(alpha, tau, delta, beta, dt=0.001, dc=1.0):
     # Return choice RT
     return choicert
 
-# P300 simulation
+# P300 simulator
 @njit
 def simulate_trial(params):
     """ 
@@ -91,43 +66,98 @@ def simulate_trial(params):
     return choicert, z
 
 # Simulate multiple datasets for BayesFlow training 
-def batch_simulator(prior_samples, n_obs):
+@njit
+def batch_simulator(params, n_obs):
     """ 
     Simulates multiple datasets for BayesFlow training 
     ----------
     Returns:
-        sim_data: np.ndarray -- simulated data
+        sim_choicert: np.ndarray -- simulated choice RT
+        sim_z: np.ndarray -- simulated P300 response
     """
     # Number of parameter sets and initializing arrays
-    n_sim = prior_samples.shape[0]
-    sim_choicert = np.empty((n_sim, n_obs), dtype=np.float32)
-    sim_z = np.empty((n_sim, n_obs), dtype=np.float32)
+    sim_choicert = np.empty(n_obs, dtype=np.float32)
+    sim_z = np.empty(n_obs, dtype=np.float32)
 
     # Simulate data for each parameter set
-    for i in range(n_sim):
-        for j in range(n_obs):
-            choicert, z = simulate_trial(prior_samples[i])
-            sim_choicert[i, j] = choicert
-            sim_z[i, j] = z
+    for i in range(n_obs):
+        sim_choicert[i], sim_z[i] = simulate_trial(params)
 
-    # Combine RT and P300 into BayesFlow's expected input shape (n_sim, n_trials, 2)
-    sim_data = np.stack([sim_choicert, sim_z], axis=-1)
-    
     # Return data 
-    return sim_data
+    return sim_choicert, sim_z
+
+# Prior distribution
+def prior():
+    """
+    Prior distribution for the parameters of the DDM + P300 model.
+    Returns a dictionary containing samples from the (truncated) normal and uniform priors.
+    """
+
+    # Helper function to sample from a truncated normal
+    def truncated_normal(mean, std, low, high):
+        a, b = (low - mean) / std, (high - mean) / std
+        return truncnorm.rvs(a, b, loc=mean, scale=std)
+
+    # Sample parameters
+    # Alpha underestimated
+    alpha = truncated_normal(1.0, 0.5, 0.001, 3.0)       # N(1, .5^2), truncated to [.001, 3]
+    beta = truncated_normal(0.5, 0.25, 0.001, 0.99)      # N(0.5, .25^2), truncated to [.001, .99]
+    # Fixed tau (previous overestimated)
+    tau = truncated_normal(0.3, 0.1, 0.05, 1)            # Uniform distribution between 0.15 and 0.6
+    mu_delta = np.random.normal(0.0, 0.5)                # N(0, .5^2), no truncation
+    log_eta_delta = np.random.normal(np.log(0.5), 0.3)   # Log-normal distribution with mean 0.5 and standard deviation 0.3
+    eta_delta = np.exp(log_eta_delta)                    # Exponential transformation to ensure positive values
+    gamma = np.random.normal(0.0, 0.2)                   # N(0, .2^2), no truncation
+    # Fixed sigma (previous underestimated)
+    sigma = (np.abs(np.random.normal(0.5, 0.5)))         # Uniform distribution between 0.5 and 5.0
+
+    # Return dictionary of parameters
+    return dict(
+        alpha=alpha,
+        tau=tau,
+        beta=beta,
+        mu_delta=mu_delta,
+        eta_delta=eta_delta,
+        gamma=gamma,
+        sigma=sigma
+    )
+
+
+# Likelihood function
+def likelihood(alpha, tau, beta, mu_delta, eta_delta, gamma, sigma, n_obs):
+    """ 
+    Simulates one full trial including choicert and p300 (z)
+    ----------
+    Args:
+        alpha: float -- drift rate
+        tau: float -- non-decision time
+        beta: float -- boundary separation
+        mu_delta: float -- mean of the drift rate
+        eta_delta: float -- standard deviation of the drift rate
+        gamma: float -- P300 response
+        sigma: float -- standard deviation of the P300 response
+        N: int -- number of trials
+    Returns:
+        choicert: float -- choice RT
+        z: float -- P300 response
+    """
+
+    params = np.array([alpha, tau, beta, mu_delta, eta_delta, gamma, sigma])
+    choicert, z = batch_simulator(params, n_obs)
+
+    return dict(choicert=choicert, z=z)
 
 # =====================================================================================
-# Plotting
-def simulated_data_check(sim_data, name_prefix= 'sim', save_dir= 'Figures'):
+def simulated_data_check(sim_data, name_prefix= 'sim', save_dir= 'figures'):
     """
-    Plots the simulated data
+    Plots the simulated data from BayesFlow simulator output
     """
-
+    # Create save directory if it doesn't exist
     os.makedirs(save_dir, exist_ok=True)
 
-    # Extract RTs and P300s
-    choicert = sim_data[:, :, 0].flatten()
-    z = sim_data[:, :, 1].flatten()
+    # Extract RTs and P300s from the dictionary structure
+    choicert = sim_data["choicert"].flatten()
+    z = sim_data["z"].flatten()
 
     # Plot RTs
     plt.figure(figsize=(8, 6))
@@ -150,13 +180,3 @@ def simulated_data_check(sim_data, name_prefix= 'sim', save_dir= 'Figures'):
     plt.close()
 
     print(f"Plots saved to {save_dir}")
-
-if __name__ == "__main__":
-    # Simulate for 100 participants for 100 trials
-    batch_size = 100
-    n_trials = 100
-    prior_samples = prior(batch_size)
-    sim_data = batch_simulator(prior_samples, n_trials)
-    
-    # Visual check
-    simulated_data_check(sim_data, name_prefix='sim', save_dir='Figures')
