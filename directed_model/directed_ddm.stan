@@ -26,12 +26,10 @@ parameters {
   vector<lower=0.001, upper=0.99>[nparts] beta; // Starting point bias (per participant)
   vector<lower=0.5, upper=1>[nparts] tau_raw;   // Raw non-decision time truncated (per participant)
   vector<lower=0.001, upper=5>[nparts] eta;     // Within-trial noise ensure eta > 0 (per participant)
-
-  // Group-level parameters
-  real mu_z;                  // Latent variable mean
-  real<lower=0.1> sigma_z;    // Latent variable SD ensure sigma_z > 0
-  real lambda;                // Effect of z on drift rate
-  real b;                     // Drift rate baseline
+  vector [nparts] mu_z;                         // Latent variable mean (per participant)
+  vector<lower=0.001> [nparts] sigma_z;         // Latent variable SD ensure sigma_z > 0 (per participant)
+  vector [nparts] lambda;                       // Effect of z on drift rate (per participant)
+  vector [nparts] b;                            // Drift rate baseline (per participant)
 }
 
 // ------------------------------------------------------------------------------
@@ -39,7 +37,7 @@ transformed parameters {
     // Delta estimates from lambda, z, b
     array[N] real delta;
     for (i in 1:N) {
-        delta[i] = lambda * z[i] + b;
+        delta[i] = lambda[participant[i]] * z[i] + b[participant[i]];
         }
     
     // Non-decision time, scaled to stay below RT (with 2% margin)
@@ -52,21 +50,23 @@ transformed parameters {
 // ------------------------------------------------------------------------------
 model {
   // Priors
-  alpha ~ normal(1,.5); 
-  beta ~ normal(.5,.25); 
-  tau_raw ~ normal(.3, .1); 
+  alpha ~ normal(1.5,.3); 
+  beta ~ normal(.5,.2); 
+  tau_raw ~ normal(.4, .1); 
   mu_z ~ normal(0,1); 
   sigma_z ~ normal(0,1) T[0, ]; 
-  lambda ~ normal(0,.2);
-  b ~ normal(0,.2);
+  lambda ~ normal(0,1); 
+  b ~ normal(0,1);
 
   // Within-trial noise
   for(i in 1:nparts){
-    eta[i]~ normal(0,.2)T[0,];
+    eta[i]~ normal(0,.2)T[0,]; 
     }
 
   // Latent variable
-  z ~ normal(mu_z, sigma_z);
+  for (i in 1:N) {
+    z[i] ~ normal(mu_z[participant[i]], sigma_z[participant[i]]);
+    }
 
   // Log-likelihood for each trial
   for (i in 1:N) {

@@ -3,7 +3,7 @@ import numpy as np
 
 # Function to simulate data from a directed drift diffusion model
 def simul_directed_ddm(ntrials=100, alpha=1, tau=0.4, beta=0.5, eta=0.3, 
-                      varsigma=1, mu_z=0, sigma_z=1, lambda_param=0.7, b=0.5,
+                      varsigma=1, mu_z=0, noise_distribution='gaussian', sigma_z=1, lambda_param=0.7, b=0.5,
                       nsteps=10000, step_length=0.001):
     """
     Simulates data according to a directed drift diffusion model with P300 influence.
@@ -24,6 +24,8 @@ def simul_directed_ddm(ntrials=100, alpha=1, tau=0.4, beta=0.5, eta=0.3,
         Within-trial variability in drift rate (diffusion coefficient) (default=1)
     mu_z : float, optional
         Mean of latent P300 factor (default=0)
+    noise_distribution : str, optional
+        Distribution of noise (default='gaussian')
     sigma_z : float, optional
         Standard deviation of latent P300 factor (default=1)
     lambda_param : float, optional
@@ -34,7 +36,6 @@ def simul_directed_ddm(ntrials=100, alpha=1, tau=0.4, beta=0.5, eta=0.3,
         Number of steps for simulation (default=300)
     step_length : float, optional
         Time step size in seconds (default=0.001)
-        
     Returns
     -------
     ndarray
@@ -52,8 +53,20 @@ def simul_directed_ddm(ntrials=100, alpha=1, tau=0.4, beta=0.5, eta=0.3,
     choice = np.zeros(ntrials)
     
     # Generate latent P300 factors
-    z = np.random.normal(mu_z, sigma_z, ntrials)
-    
+    if noise_distribution == 'gaussian':
+        z = np.random.normal(mu_z, sigma_z, ntrials)
+    elif noise_distribution == 'laplace':
+        # Laplace (var = 2*b^2) → b = sigma / sqrt(2)
+        b_laplace = sigma_z / np.sqrt(2)
+        z = np.random.laplace(mu_z, b_laplace, ntrials)
+    elif noise_distribution == 'uniform':
+        # Uniform (var = (b - a)^2 / 12) → range = sqrt(12)*sigma
+        a_uniform = mu_z -np.sqrt(3) * sigma_z
+        b_uniform = mu_z + np.sqrt(3) * sigma_z
+        z = np.random.uniform(a_uniform, b_uniform, ntrials)
+    else:
+        raise ValueError(f"Unknown distribution: {noise_distribution}")
+
     # Calculate individual drift rates including P300 influence and trial-to-trial variability
     drift_rates = np.random.normal(lambda_param * z + b, eta, ntrials)
     

@@ -1,217 +1,190 @@
-# Force CPU on macOS before any TensorFlow usage
+# =====================================================================================
+# Initialize JAX backend
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["KERAS_BACKEND"] = "jax"
 
+import jax
+import numpy as np
 import tensorflow as tf
-tf.config.set_visible_devices([], 'GPU')  # Must be here right after import
 
-# Now import everything else
-from bayesflow.networks import InferenceNetwork
+SEED = 12
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+jax_key = jax.random.PRNGKey(SEED)
+
+# Import modules
+import bayesflow as bf
+from bayesflow.networks import InferenceNetwork, SummaryNetwork
 from bayesflow.approximators import ContinuousApproximator
 from bayesflow.simulators import make_simulator
 from bayesflow.adapters import Adapter
-from integrative_ddm_sim import ddm_prior, batch_simulator
 import numpy as np
-from tensorflow.keras import layers
-from tensorflow.keras.callbacks import ModelCheckpoint
-import sys
-import atexit
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 
-# Force CPU on macOS before any TensorFlow usage
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Minimize TensorFlow logs
+# Add JAX-specific imports for checkpointing
+import keras
+import os
 
-# TensorFlow session cleanup
-def cleanup():
-    print("Cleaning up resources...")
-    tf.keras.backend.clear_session()
-    sys.stdout.flush()  # Ensure all prints are flushed before exit
+# Import DDM simulator and plotting functions
+import integrative_ddm_sim as ddm
+import plots
 
-atexit.register(cleanup)
+# =====================================================================================
+# Helper functions for training history management
+
+def save_training_history(history, checkpoint_dir):
+    """Save training history as pickle."""
+    import pickle
+    
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    
+    # Save as pickle - include seed in filename
+    history_pickle_path = os.path.join(checkpoint_dir, f'training_history_seed{SEED}_mixed_new_sigma_beta.pkl')
+    with open(history_pickle_path, 'wb') as f:
+        pickle.dump(history.history, f)
+    
+    return history_pickle_path
+
+def load_training_history(checkpoint_dir, format='pickle'):
+    """Load training history from saved files.
+    
+    Args:
+        checkpoint_dir: Directory containing saved history files
+        format: 'pickle', 'json', or 'csv'
+    
+    Returns:
+        Dictionary containing training history
+    """
+    import pickle
+    import json
+    
+    if format == 'pickle':
+        history_path = os.path.join(checkpoint_dir, f'training_history_seed{SEED}_mixed_new_sigma_beta.pkl')
+        with open(history_path, 'rb') as f:
+            return pickle.load(f)
+    
+    elif format == 'json':
+        history_path = os.path.join(checkpoint_dir, f'training_history_seed{SEED}_mixed_new_sigma_beta.json')
+        with open(history_path, 'r') as f:
+            history_dict = json.load(f)
+        # Convert lists back to numpy arrays
+        for key, value in history_dict.items():
+            if isinstance(value, list):
+                history_dict[key] = np.array(value)
+        return history_dict
+    
+    elif format == 'csv':
+        history_path = os.path.join(checkpoint_dir, f'training_history_seed{SEED}_mixed_new_sigma_beta.csv')
+        history_df = pd.read_csv(history_path)
+        return history_df.to_dict('list')
+    
+    else:
+        raise ValueError("Format must be 'pickle', 'json', or 'csv'")
+
+# =====================================================================================
+# Setup paths and directories
+
+# Get the directory of the current file
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Set checkpoint path relative to current file - include seed in filename
+CHECKPOINT_PATH = os.path.join(CURRENT_DIR, 'checkpoints', f'jax_simple_integrative_ddm_checkpoint_seed{SEED}_mixed_new_sigma_beta.keras')
+# Create checkpoint directory if it doesn't exist
+os.makedirs(os.path.dirname(CHECKPOINT_PATH), exist_ok=True)
 
 # =====================================================================================
 # Main training 
 
+# Initialize networks
 print("Initializing networks...")
 
-# Custom summary network
-class MySummaryNet(tf.keras.Model):
-    def __init__(self):
-        super().__init__()
-        self.lstm = layers.LSTM(64, return_sequences=False)
-        self.dense1 = layers.Dense(32, activation='relu')
-        self.dense2 = layers.Dense(16, activation='relu')
-        self.output_layer = layers.Dense(7, activation='relu')  
+# Meta function for simulator
+def meta():
+    return dict(n_obs=100)
 
-    def call(self, inputs):
-        tf.print("SummaryNet input shape:", tf.shape(inputs))  # Shows actual shape at runtime
+# Use these in make_simulator
+print("Making simulator...")
+simulator = make_simulator([ddm.prior, ddm.likelihood], meta_fn=meta)
 
-        # Check that inputs are correctly shaped (should be rank 4)
-        tf.debugging.assert_rank(inputs, 4, message="Expected input rank 4: (batch_outer, batch_inner, time, features)")
+# Simulation data setup 
+sim_draws = simulator.sample(100)
+# ddm.simulated_data_check(sim_draws)
 
-        # Use static shapes when possible
-        batch_outer, batch_inner, time_steps, features = inputs.shape
+print("Setting up validation data...")
+val_data_size = 10000
+val_data = simulator.sample(val_data_size) 
+#ddm.simulated_data_check(val_data)
 
-        if None in [batch_outer, batch_inner, time_steps, features]:
-            # Fallback to dynamic shape if static shape is missing
-            shape = tf.shape(inputs)
-            batch_outer = shape[0]
-            batch_inner = shape[1]
-            time_steps = shape[2]
-            features = shape[3]
-
-            x = tf.reshape(inputs, (batch_outer * batch_inner, time_steps, features))
-            x = self.lstm(x)
-            x = self.dense1(x)
-            x = self.dense2(x)
-            return self.output_layer(x)  # Make sure to return the output
-        else:
-            # Handle the case where the input shape is static
-            x = tf.reshape(inputs, (batch_outer * batch_inner, time_steps, features))
-            x = self.lstm(x)
-            x = self.dense1(x)
-            x = self.dense2(x)
-            return self.output_layer(x)  # Make sure to return the output
-
-    def compute_metrics(self, summary_variables, stage=None):
-        outputs = self(summary_variables)
-        return {"outputs": outputs}
-
-# Custom inference network
-class MyInferenceNetwork(InferenceNetwork):
-    def __init__(self):
-        super().__init__()
-        self.dense1 = layers.Dense(64, activation='relu')
-        self.dense2 = layers.Dense(32, activation='relu')
-        self.output_layer = layers.Dense(7)
-
-    def build(self, xz_shape):
-        print("xz_shape:", xz_shape)  # Debugging the shape value
-
-        # Ensure xz_shape[-1] is a valid integer and not a tensor
-        feature_dim = int(xz_shape[-1])  # Convert to integer if necessary
-        self.dense1.build((None, feature_dim))  # Build layer with the correct shape
-        self.dense2.build((None, self.dense1.units))
-        self.output_layer.build((None, self.dense2.units))
-        super().build(xz_shape)
-
-    def call(self, xz, conditions=None, training=False):
-        print("InferenceNet input shape (raw):", tf.shape(xz))
-        if len(xz.shape) == 3:
-            xz = tf.reshape(xz, (-1, xz.shape[-1]))
-        tf.debugging.assert_equal(xz.shape[-1], 7, message="Expected 7 summary features.")
-        x = self.dense1(xz)
-        x = self.dense2(x)
-        return self.output_layer(x)
-
-# Initialize networks
-summary_net = MySummaryNet()
-inference_net = MyInferenceNetwork()
-
-# Dummy pass to build networks
-dummy_summary_input = tf.zeros((32, 32, 100, 2), dtype=tf.float32)
-summary_net.build(dummy_summary_input.shape)  # Build the summary network with shape
-summary_output = summary_net(dummy_summary_input)  # Ensure output is computed
-
-# Add a check to confirm summary_output is valid
-if summary_output is None:
-    raise ValueError("Summary network did not return a valid output.")
-
-# Get the actual output shape of the summary network
-output_shape_summary_net = tf.shape(summary_output)  # This gets the shape of the summary network output
-
-# Now use the output shape from the summary network to build the inference network
-inference_net.build(output_shape_summary_net)  # Build the inference network using the correct shape
-
-# Adapter setup
+summary_network = bf.networks.SetTransformer(summary_dim=8)
+inference_network = bf.networks.CouplingFlow()
 adapter = (
     Adapter()
-    .to_array()
-    .convert_dtype(from_dtype="float64", to_dtype="float32")
-    .standardize()
-    .rename("sims", "summary_variables")
-    .rename("params", "inference_variables")
+    .broadcast("n_obs", to="choicert")    
+    .as_set(["choicert", "z"])
+    .standardize(exclude=["n_obs"])
+    .convert_dtype("float64", "float32")
+    .concatenate(["alpha", "tau", "beta", "mu_delta", "eta_delta", "gamma", "sigma"], into="inference_variables")
+    .concatenate(["choicert", "z"], into="summary_variables")
+    .rename("n_obs", "inference_conditions")
 )
 
-# Optimizer
-optimizer = tf.keras.optimizers.AdamW(learning_rate=1e-4, clipnorm=1.1)
-
-# Approximator
-approximator = ContinuousApproximator(
-    summary_network=summary_net,
-    inference_network=inference_net,
-    adapter=adapter
+workflow = bf.BasicWorkflow(
+    simulator=simulator,
+    adapter=adapter,
+    inference_network=inference_network,
+    summary_network=summary_network,
 )
 
-approximator.compile(optimizer=optimizer)
+# Adapted summary_variables and inference_variables
+adapted_sim_draws = adapter(sim_draws)
+adapted_val_data = adapter(val_data)
+print("Adapted inference_variables shape:", adapted_sim_draws["inference_variables"].shape)
+print("Adapted summary_variables dtype:", adapted_sim_draws["summary_variables"].dtype)
+print("Adapted inference_variables dtype:", adapted_sim_draws["inference_variables"].dtype)
 
-# Simulator
-def full_simulator(batch_size=32, n_obs=100):
-    params = ddm_prior(batch_size).astype(np.float32)
-    sims = batch_simulator(params, n_obs).astype(np.float32)
-    return {
-        "params": params,
-        "sims": sims
-    }
+# Check for existing checkpoint and history
+history_pickle_path = os.path.join(os.path.dirname(CHECKPOINT_PATH), f'training_history_seed{SEED}_mixed_new_sigma_beta.pkl')
+checkpoint_exists = os.path.exists(CHECKPOINT_PATH)
+history_exists = os.path.exists(history_pickle_path)
 
-generative_model = make_simulator(full_simulator)
-
-# Trial count prior
-# def prior_N(n_min=60, n_max=120):
-#    return np.random.randint(n_min, n_max + 1)
-
-
-# Optional gradient flow check
-sample_batch = full_simulator(batch_size=2, n_obs=10)
-adapted = adapter(sample_batch)
-
-x = adapted["summary_variables"]        # shape: (2, 10, 2)
-x = tf.expand_dims(x, axis=0)           # shape: (1, 2, 10, 2)
-
-with tf.GradientTape() as tape:
-    summary_out = summary_net(x)
-    inf_out = inference_net(summary_out)
-    target = tf.random.normal(tf.shape(inf_out), dtype=tf.float32)
-    dummy_loss = tf.reduce_mean(tf.square(inf_out - target))
-
-grads = tape.gradient(dummy_loss, approximator.trainable_variables)
-
-if any(g is None for g in grads):
-    print("Gradients:", grads)
-    raise RuntimeError("Gradient flow broken: Some gradients are None.")
+if checkpoint_exists and history_exists:
+    print("Loading checkpoint and training history...")
+    approximator = keras.saving.load_model(CHECKPOINT_PATH)
+    history_dict = load_training_history(os.path.dirname(CHECKPOINT_PATH), format='pickle')
+    print("Loaded existing model and training history.")
+elif checkpoint_exists:
+    print("Loading checkpoint (no history found)...")
+    approximator = keras.saving.load_model(CHECKPOINT_PATH)
+    history_dict = None
+    print("Loaded existing model, but no training history found.")
 else:
-    print("Gradient flow check passed.")
+    print("No checkpoint found, creating new approximator...")
 
-# Checkpoint callback
-checkpoint_callback = ModelCheckpoint(
-    'checkpoints/integrative_ddm_epoch_{epoch:02d}.keras',
-    save_freq='epoch',
-    save_best_only=True,
-    verbose=1
-)
+    history = workflow.fit_online(
+        epochs=150, 
+        batch_size=64, 
+        num_batches_per_epoch=200, 
+        validation_data=10000
+    )
 
-# Print trainable variables
-print("Trainable variables:")
-for var in approximator.trainable_variables:
-    print(var.name, var.shape)
+    print("Training complete.")
 
-# Train the model
-print("Training the model...")
-losses = approximator.fit(
-    epochs=500,
-    num_batches=200,
-    batch_size=32,
-    simulator=generative_model,
-    callbacks=[checkpoint_callback],
-    iterations_per_epoch=1000,
-    n_obs=100
-)
-print("Training complete.")
+    # Save training history
+    history_pickle_path = save_training_history(history, os.path.dirname(CHECKPOINT_PATH))
+    print(f"Saved training history as pickle: {history_pickle_path}")
+    
+    # Save the model
+    workflow.approximator.save(CHECKPOINT_PATH)
+    print(f"Saved model checkpoint: {CHECKPOINT_PATH}")
+    
+    # Convert to dictionary format for consistent plotting
+    history_dict = history.history
 
-# Save model
-approximator.save('checkpoints/integrative_ddm_model')
+# =====================================================================================
+# Plotting and Analysis (always executed after loading or training)
 
-# Save and report losses
-np.save('losses.npy', losses)
-print(f"Final loss: {losses[-1]}")
+# Use the extracted plotting functions
+results = plots.generate_training_plots_and_analysis(history_dict, SEED, CURRENT_DIR, verbose=True)

@@ -28,3 +28,14 @@ ENV/
 *.cover
 
 archive/
+
+
+figures/
+
+directed_model/data/
+directed_model/figures/
+directed_model/results/
+
+integrative_model/data/
+integrative_model/figures/
+integrative_model/checkpoints/

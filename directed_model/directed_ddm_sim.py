@@ -7,14 +7,14 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib import rc
 from scipy import stats
-from directed_ddm_utils import simul_directed_ddm
-import sys
+from directed_model.directed_ddm_utils import simul_directed_ddm
+
 # =====================================================================================
 # Simulations
 
 # Get current filename without extension and use it for data file
 current_file = os.path.splitext(os.path.basename(__file__))[0]
-data_filename = f'data/{current_file}data.mat'
+data_filename = os.path.join(os.path.dirname(__file__), 'data', f'{current_file}data.mat')
 
 # Simulation parameters 
 if not os.path.exists(data_filename) or True:
@@ -33,8 +33,8 @@ if not os.path.exists(data_filename) or True:
     beta = np.random.uniform(.3, .7, size=nparts)  # Uniform from .3 to .7 
     mu_z = np.random.normal(0, 1, size=nparts)  # Normal distribution with mean 0 and SD 1
     sigma_z = np.abs(np.random.normal(0.5, 0.5, size=nparts))  # Absolute value of normal distribution with mean 0.5 and SD 0.5
-    lambda_param = np.random.normal(1.25, 0.5, size=nparts)  # Normal distribution with mean 1.25 and SD 0.5
-    b = np.random.uniform(0, 1, size=nparts)  # Uniform from 0 to 1
+    lambda_param = np.random.uniform(-3, 3, size=nparts)  # Uniform from -3 to 3
+    b = np.random.normal(0, 1, size=nparts)  # Normal distribution with mean 0 and SD 1
     eta = np.random.uniform(0, 1, size=nparts)  # Trial-to-trial variability uniform from 0 to 1
     
     # Simulate data
@@ -47,10 +47,7 @@ if not os.path.exists(data_filename) or True:
     indextrack = 0 
     for p in range(nparts):
 
-        # Print parameters before simulation
-        print(f"\nParameters for participant {p+1}:")
-        print(f"alpha={alpha[p]:.3f}, tau={tau[p]:.3f}, beta={beta[p]:.3f}, mu_z={mu_z[p]:.3f}, sigma_z={sigma_z[p]:.3f}, lambda={lambda_param[p]:.3f}, b={b[p]:.3f}, eta={eta[p]:.3f}")
-        
+        # Simulate data
         signed_rt, random_walks, z_i = simul_directed_ddm(ntrials=ntrials, alpha=alpha[p], 
                                                           tau=tau[p], beta=beta[p], mu_z=mu_z[p], 
                                                           sigma_z=sigma_z[p], lambda_param=lambda_param[p], 
@@ -73,16 +70,9 @@ if not os.path.exists(data_filename) or True:
 
         # Check for invalid RTs
         if np.any(np.isnan(response_time)) or np.any(np.isinf(response_time)):
-            print(f"⚠️ Participant {p+1}: Invalid RTs found.")
+            print(f"Participant {p+1}: Invalid RTs found.")
             print(f"Parameters: alpha={alpha[p]}, tau={tau[p]}, beta={beta[p]}, mu_z={mu_z[p]}, sigma_z={sigma_z[p]}, lambda={lambda_param[p]}, b={b[p]}, eta={eta[p]}")
 
-        # Print the number of valid RTs for each participant
-        valid_rts = response_time[np.isfinite(response_time)]
-        print(f"Participant {p+1}: {len(valid_rts)} valid RTs out of {ntrials}")
-
-        # print RTs
-        print(f"RTs: {response_time}")
-        
         # Compute minRT after the full loop
         minRT = np.zeros(nparts)
         for p in range(nparts):
@@ -114,11 +104,9 @@ if not os.path.exists(data_filename) or True:
     genparam['z'] = z_all
     
     # Create data directory if it doesn't exist
-    os.makedirs('data', exist_ok=True)
+    os.makedirs(os.path.dirname(data_filename), exist_ok=True)
     
     # Save with dynamic filename
     sio.savemat(data_filename, genparam)
 else:
     genparam = sio.loadmat(data_filename)
-
-
