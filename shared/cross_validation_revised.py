@@ -14,7 +14,8 @@ def directed_to_integrative_ddm(directed_data):
     # FROM: 'alpha', 'tau', 'beta', 'mu_z', 'sigma_z', 'lambda_param', 'b', 'eta'
     # TO: 'alpha', 'tau', 'beta', 'mu_delta', 'eta_delta', 'gamma', 'sigma'
 
-    nparts = np.squeeze(directed_data['nparts'])
+    eta_delta = np.sqrt(directed_data['lambda_param']**2 * directed_data['sigma_z']**2 + directed_data['eta']**2)
+    gamma = directed_data['lambda_param'] * directed_data['sigma_z']**2 / eta_delta**2
 
     new_integrative_data = {
         # Core parameters stay the same
@@ -27,18 +28,18 @@ def directed_to_integrative_ddm(directed_data):
 
         # eta_delta^2 = lambda_param^2 * sigma_z^2 + eta^2
         # eta_delta = sqrt(lambda_param^2 * sigma_z^2 + eta^2)
-        'eta_delta': np.sqrt(directed_data['lambda_param']**2 * directed_data['sigma_z']**2 + directed_data['eta']**2),
+        'eta_delta': eta_delta,
 
-        # gamma = 1 / lambda_param
-        'gamma': 1 / directed_data['lambda_param'],
+        # gamma = lambda * sigma_z^2 / eta_delta^2
+        'gamma': gamma,
 
-        # sigma = sqrt(sigma_z^2 - (1 / lambda_param)^2 * eta_delta^2)
-        'sigma': np.sqrt(directed_data['sigma_z']**2 - (1 / directed_data['lambda_param'])**2 * directed_data['eta_delta']**2),
+        # sigma = sqrt(sigma_z^2 - gamma^2 * eta_delta^2)
+        'sigma': np.sqrt(directed_data['sigma_z']**2 - gamma**2 * eta_delta**2),
 
         # Other parameters
         'rt': directed_data['rt'],
         'acc': directed_data['acc'],
-        'y': directed_data['y'],
+        'choicert': directed_data['y'],
         'z': directed_data['z'],
         'participant': directed_data['participant'],
         'nparts': directed_data['nparts'],
@@ -68,32 +69,32 @@ def integrative_to_directed_ddm(integrative_data):
     
     nparts = np.squeeze(integrative_data['nparts'])
 
+    # Pre-compute parameters per the algebra
+    sigma_z2 = integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2
+    sigma_z  = np.sqrt(sigma_z2)
+    lambda_param = integrative_data['gamma'] * integrative_data['eta_delta']**2 / sigma_z2
+    eta = np.sqrt(integrative_data['eta_delta']**2 * integrative_data['sigma']**2 / sigma_z2)
+    b_value = integrative_data['mu_delta'] * (1 - lambda_param * integrative_data['gamma'])
+
     new_directed_data = {
         # Core parameters stay the same
         'alpha': integrative_data['alpha'],
         'beta': integrative_data['beta'],
         'tau': integrative_data['tau'],
 
-        # mu_z = 0,
-        'mu_z': 0.0,
+        'mu_z': np.zeros((1, nparts)),
 
-        # sigma_z^2 = gamma^2 * eta_delta^2 + sigma^2
-        # sigma_z = sqrt(gamma^2 * eta_delta^2 + sigma^2)
-        'sigma_z': np.sqrt(integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2),
+        'sigma_z': sigma_z,
 
-        # lambda = 1 / gamma
-        'lambda_param': 1 / integrative_data['gamma'],
+        'lambda_param': lambda_param,
 
-        # b = mu_delta, because mu_z = 0
-        'b': integrative_data['mu_delta'], # - integrative_data['lambda_param'] * integrative_data['mu_z'],
+        'b': b_value,
 
-        # eta = sqrt(eta_delta^2 - (1 / gamma)^2 * (gamma^2 * eta_delta^2 + sigma^2))
-        'eta': np.sqrt(integrative_data['eta_delta']**2 - (1 / integrative_data['gamma'])**2 * 
-        (integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2)),
+        'eta': eta,
 
         'rt': integrative_data['rt'],
         'acc': integrative_data['acc'],
-        'y': integrative_data['y'],
+        'y': integrative_data['choicert'],
         'z': integrative_data['z'],
         'participant': integrative_data['participant'],
         'nparts': integrative_data['nparts'],
@@ -103,9 +104,14 @@ def integrative_to_directed_ddm(integrative_data):
         'condition': integrative_data['condition'],
     }
 
-    print(f"integrative_data[sigma]: {integrative_data['sigma']}")
-    print(f"new_directed_data[sigma_z]: {new_directed_data['sigma_z']}")
-    print(f"new_directed_data[eta]: {new_directed_data['eta']}")
+    # for key in integrative_data.keys():
+    #     value = np.squeeze(integrative_data[key])
+    #     print(f"integrative_data[{key}]: {value}")
+
+
+    # for key in new_directed_data.keys():
+    #     value = np.squeeze(new_directed_data[key])
+    #     print(f"new_directed_data[{key}]: {value}")
 
     condition = np.squeeze(new_directed_data['condition'])
     print(f"condition: {condition}")
@@ -115,10 +121,5 @@ def integrative_to_directed_ddm(integrative_data):
     sio.savemat(file_path, new_directed_data)
     print(f"Saved: {file_path}")
 
-if __name__ == "__main__":
-    # directed_data = sio.loadmat(PROJECT_ROOT / 'directed_model' / 'data' / 'directed_ddm_base.mat')
-    # directed_to_integrative_ddm(directed_data)
 
-    integrative_data = sio.loadmat(PROJECT_ROOT / 'integrative_model' / 'data' / 'integrative_ddm_data_SNR_high_COUP_high_DIST_gaussian.mat')
-    integrative_to_directed_ddm(integrative_data)
 

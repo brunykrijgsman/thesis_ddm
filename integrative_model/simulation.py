@@ -1,19 +1,8 @@
 # =====================================================================================
 # Import modules
-import os
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy import stats
-from time import time
-import matplotlib.pyplot as plt
-import sys
 from numba import njit
 from scipy.stats import truncnorm
-
-# Configure environment
-if "KERAS_BACKEND" not in os.environ:
-    os.environ["KERAS_BACKEND"] = "tensorflow"
 
 # =====================================================================================
 # DDM simulation
@@ -92,46 +81,15 @@ def prior():
     Prior distribution for the parameters of the DDM + P300 model.
     Returns a dictionary containing samples from the (truncated) normal and uniform priors.
     """
-
-    # Helper function to sample from a truncated normal
-    def truncated_normal(mean, std, low, high):
-        a, b = (low - mean) / std, (high - mean) / std
-        return truncnorm.rvs(a, b, loc=mean, scale=std)
-
-    # Old sample informed parameters
-    # alpha = truncated_normal(1.0, 0.5, 0.001, 3.0)       # N(1, .5^2), truncated to [.001, 3]
-    # beta = truncated_normal(0.5, 0.25, 0.001, 0.99)      # N(0.5, .25^2), truncated to [.001, .99]
-    # Fixed tau (previous overestimated)
-    # tau = truncated_normal(0.3, 0.1, 0.1, 0.9)           # Truncated normal distribution between 0.1 and 0.6
-    # mu_delta = np.random.normal(0.0, 1)                  # N(0, 1^2), no truncation
-    # log_eta_delta = np.random.normal(np.log(0.5), 0.3)   # Log-normal distribution with mean 0.5 and standard deviation 0.3
-    # eta_delta = np.exp(log_eta_delta)                    # Exponential transformation to ensure positive values
-    # gamma = np.random.normal(0.0, 1.0)                   # N(0, 1^2), no truncation
-    # Fixed sigma (previous underestimated)
-    # sigma = (np.abs(np.random.normal(0.0, 1)))           # Absolute value of normal distribution (only positive values)
-
-    # Best sample uniform parameters
-    # alpha = truncated_normal(1.5, 0.5, 0.001, 3.0)
-    # tau = np.random.uniform(0.1, 0.6)
-    # beta = np.random.uniform(0.1, 0.9)
-    # beta = truncated_normal(0.5, 0.20, 0.01, 0.99)
-    # mu_delta = np.random.normal(0.0, 1.0)
-    # eta_delta = np.random.uniform(0.0, 2.0)
-    # log_eta_delta = np.random.normal(np.log(0.5), 0.3)
-    # eta_delta = np.exp(log_eta_delta)
-    # gamma = np.random.uniform(-5.0, 5.0)
-    # gamma = np.random.normal(0.0, 1.0)
-    # sigma = np.random.uniform(0.5, 2.0)
-
+    
     # Uniform sample parameters
     alpha = np.random.uniform(.5,2.0)
     tau = np.random.uniform(.1,1)
-    # beta = np.random.uniform(.1,.9)
-    beta = truncated_normal(0.5, 0.25, 0.001, 0.99) # new beta
+    beta = np.random.uniform(.1,.9)
     mu_delta = np.random.normal(0,1)
     eta_delta = np.random.uniform(0,2)
     gamma = np.random.uniform(-3, 3)
-    # sigma = np.random.uniform(0,2)
+    # sigma = np.random.uniform(0,.2)
     sigma = (np.abs(np.random.normal(0.5, 0.5)))
     
     # Return dictionary of parameters

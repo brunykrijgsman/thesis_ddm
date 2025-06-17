@@ -12,10 +12,23 @@ from scipy.stats import entropy
 from scipy.stats import wasserstein_distance
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error
-from directed_model.analysis_utils import compute_credible_interval_coverage
 
 # =====================================================================================
-def recovery(estimates, targets):
+# Compute credible interval coverage
+def compute_credible_interval_coverage(post_samples, true_values, level=0.95):
+    lower_bound = (1.0 - level) / 2.0
+    upper_bound = 1.0 - lower_bound
+    coverage = []
+
+    for i in range(post_samples.shape[0]):  # participant level
+        ci_lower = np.quantile(post_samples[i, :], lower_bound)
+        ci_upper = np.quantile(post_samples[i, :], upper_bound)
+        coverage.append(ci_lower <= true_values[i] <= ci_upper)
+
+    return np.mean(coverage)
+
+# =====================================================================================
+def recovery_plot(estimates, targets):
     """
     Parameter recovery plots: true vs. estimated.
     Includes median, mean, 95% and 99% credible intervals.

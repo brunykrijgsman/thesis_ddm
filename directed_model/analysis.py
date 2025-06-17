@@ -1,28 +1,14 @@
 # =====================================================================================
 # Analysis utilities for directed DDM
-import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from directed_model.directed_ddm_utils import simul_directed_ddm
 import re
 import math
 from collections import defaultdict
 
-# =====================================================================================
-# Compute credible interval coverage
-def compute_credible_interval_coverage(post_samples, true_values, level=0.95):
-    lower_bound = (1.0 - level) / 2.0
-    upper_bound = 1.0 - lower_bound
-    coverage = []
-
-    for i in range(post_samples.shape[0]):  # participant level
-        ci_lower = np.quantile(post_samples[i, :], lower_bound)
-        ci_upper = np.quantile(post_samples[i, :], upper_bound)
-        coverage.append(ci_lower <= true_values[i] <= ci_upper)
-
-    return np.mean(coverage)
+from directed_model.simulation import simul_directed_ddm
 
 # =====================================================================================
 # Helper function to extract and reshape parameter samples for the recovery plots

@@ -9,8 +9,8 @@
 // - lambda: The lambda/scaling parameter.
 // - b: The intercept parameter.
 // - eta: The eta parameter.
-
 // ------------------------------------------------------------------------------
+
 data {
     int<lower=1> N;                     // Total number of trials
     int<lower=1> nparts;                // Number of participants
@@ -21,15 +21,15 @@ data {
 }
 
 parameters {
-  // Subject-level DDM parameters
-  vector<lower=0.001, upper=3>[nparts] alpha;   // Threshold separation (per participant)
-  vector<lower=0.001, upper=0.99>[nparts] beta; // Starting point bias (per participant)
-  vector<lower=0.5, upper=1>[nparts] tau_raw;   // Raw non-decision time truncated (per participant)
-  vector<lower=0.001, upper=5>[nparts] eta;     // Within-trial noise ensure eta > 0 (per participant)
-  vector [nparts] mu_z;                         // Latent variable mean (per participant)
-  vector<lower=0.001> [nparts] sigma_z;         // Latent variable SD ensure sigma_z > 0 (per participant)
-  vector [nparts] lambda;                       // Effect of z on drift rate (per participant)
-  vector [nparts] b;                            // Drift rate baseline (per participant)
+    // Subject-level DDM parameters
+    vector<lower=0.001, upper=3>[nparts] alpha;    // Threshold separation (per participant)
+    vector<lower=0.001, upper=0.99>[nparts] beta;  // Starting point bias (per participant)
+    vector<lower=0.5, upper=1>[nparts] tau_raw;    // Raw non-decision time truncated (per participant)
+    vector<lower=0.001, upper=5>[nparts] eta;      // Within-trial noise ensure eta > 0 (per participant)
+    vector[nparts] mu_z;                            // Latent variable mean (per participant)
+    vector<lower=0.1>[nparts] sigma_z;              // Latent variable SD ensure sigma_z > 0 (per participant)
+    vector[nparts] lambda;                          // Effect of z on drift rate (per participant)
+    vector[nparts] b;                               // Drift rate baseline (per participant)
 }
 
 // ------------------------------------------------------------------------------
@@ -38,45 +38,47 @@ transformed parameters {
     array[N] real delta;
     for (i in 1:N) {
         delta[i] = lambda[participant[i]] * z[i] + b[participant[i]];
-        }
+    }
     
     // Non-decision time, scaled to stay below RT (with 2% margin)
     vector<lower=0>[nparts] tau;
     for (i in 1:nparts) {
         tau[i] = tau_raw[i] * minRT[i] * 0.98;
-        }
+    }
 }
 
 // ------------------------------------------------------------------------------
 model {
-  // Priors
-  alpha ~ normal(1.5,.3); 
-  beta ~ normal(.5,.2); 
-  tau_raw ~ normal(.4, .1); 
-  mu_z ~ normal(0,1); 
-  sigma_z ~ normal(0,1) T[0, ]; 
-  lambda ~ normal(0,1); 
-  b ~ normal(0,1);
+    // Priors
+    alpha ~ normal(1, 0.5);
+    beta ~ normal(0.5, 0.25);
+    tau_raw ~ normal(0.3, 0.1);
+    mu_z ~ normal(0, 1);
+    sigma_z ~ normal(0, 1) T[0, ];
+    lambda ~ normal(0, 0.2);
+    b ~ normal(0, 0.2);
 
-  // Within-trial noise
-  for(i in 1:nparts){
-    eta[i]~ normal(0,.2)T[0,]; 
+    // Within-trial noise
+    for (i in 1:nparts) {
+        eta[i] ~ normal(0, 0.2) T[0, ];
     }
 
-  // Latent variable
-  for (i in 1:N) {
-    z[i] ~ normal(mu_z[participant[i]], sigma_z[participant[i]]);
+    // Latent variable
+    for (i in 1:N) {
+        z[i] ~ normal(mu_z[participant[i]], sigma_z[participant[i]]);
     }
 
-  // Log-likelihood for each trial
-  for (i in 1:N) {
-    if (y[i] > 0) {
-        target += wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], beta[participant[i]], delta[i], eta[participant[i]]);
-    } else {
-        target += wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], 1 - beta[participant[i]], -delta[i], eta[participant[i]]);
-          }
-  }
-}   
+    // Log-likelihood for each trial
+    for (i in 1:N) {
+        if (y[i] > 0) {
+            target += wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], 
+                                 beta[participant[i]], delta[i], eta[participant[i]]);
+        } else {
+            target += wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], 
+                                 1 - beta[participant[i]], -delta[i], eta[participant[i]]);
+        }
+    }
+}
 
 // ------------------------------------------------------------------------------
 generated quantities {
@@ -84,9 +86,11 @@ generated quantities {
     for (i in 1:N) {
         // Log density for DDM process
         if (y[i] > 0) {
-            log_lik[i] = wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], beta[participant[i]], delta[i], eta[participant[i]]);
+            log_lik[i] = wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], 
+                                    beta[participant[i]], delta[i], eta[participant[i]]);
         } else {
-            log_lik[i] = wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], 1 - beta[participant[i]], -delta[i], eta[participant[i]]);
+            log_lik[i] = wiener_lpdf(abs(y[i]) | alpha[participant[i]], tau[participant[i]], 
+                                    1 - beta[participant[i]], -delta[i], eta[participant[i]]);
         }
     }
 }

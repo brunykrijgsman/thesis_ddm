@@ -1,21 +1,23 @@
+import sys
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-import sys
+from pathlib import Path
 
-# Get current directory and data path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-data_dir = os.path.join(current_dir, 'data')
+# Add project root to Python path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_ROOT))
+
+# Get data path
+data_dir = PROJECT_ROOT / 'integrative_model' / 'data'
 
 # Load one example data file to examine structure
 example_file = 'integrative_ddm_data_SNR_low_COUP_high_DIST_gaussian.mat'
-data_path = os.path.join(data_dir, example_file)
+data_path = data_dir / example_file
 data = loadmat(data_path)
 
 print(f"Loading data from: {example_file}")
 print("Available variables:", list(data.keys()))
-print()
 
 # Check key variables
 print('=== Model Parameters ===')
@@ -26,7 +28,7 @@ print('mu_delta shape:', data['mu_delta'].shape, 'mean:', np.mean(data['mu_delta
 print('eta_delta shape:', data['eta_delta'].shape, 'mean:', np.mean(data['eta_delta']))
 print('gamma shape:', data['gamma'].shape, 'mean:', np.mean(data['gamma']))
 print('sigma shape:', data['sigma'].shape, 'mean:', np.mean(data['sigma']))
-print(f"gamma: {data['gamma']}")
+print()
 
 print('=== Data Variables ===')
 print('rt shape:', data['rt'].shape, 'mean:', np.mean(data['rt']))
@@ -52,9 +54,6 @@ axes[0, 0].set_title('Gamma (DDM-P300 coupling)')
 axes[0, 0].set_xlabel('gamma')
 axes[0, 0].set_ylabel('Count')
 axes[0, 0].grid(True, alpha=0.3)
-plt.show()
-
-sys.exit()
 
 # Plot 2: Sigma distribution (P300 noise)
 axes[0, 1].hist(data['sigma'].flatten(), bins=30, edgecolor='black', alpha=0.7)
@@ -117,8 +116,8 @@ rt_means = []
 acc_means = []
 
 for condition in conditions:
-    if os.path.exists(os.path.join(data_dir, condition)):
-        cond_data = loadmat(os.path.join(data_dir, condition))
+    if (data_dir / condition).exists():
+        cond_data = loadmat(data_dir / condition)
         gamma_means.append(np.mean(cond_data['gamma']))
         sigma_means.append(np.mean(cond_data['sigma']))
         rt_means.append(np.mean(cond_data['rt']))

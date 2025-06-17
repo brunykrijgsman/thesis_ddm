@@ -1,5 +1,3 @@
-import os
-
 from collections.abc import Sequence, Mapping
 
 import matplotlib.pyplot as plt
@@ -21,7 +19,7 @@ class MockHistory:
     def __init__(self, history_dict):
         self.history = history_dict
 
-def plot_training_history(history_dict, seed, figures_dir, current_dir=None):
+def plot_training_history(history_dict, figures_path):
     """
     Plot training history including loss curves and learning rate schedule.
     
@@ -29,21 +27,14 @@ def plot_training_history(history_dict, seed, figures_dir, current_dir=None):
     ----------
     history_dict : dict
         Dictionary containing training history with keys like 'loss', 'val_loss', 'lr'
-    seed : int
-        Random seed used for training (for filename)
-    figures_dir : str
-        Directory to save figures
-    current_dir : str, optional
-        Current directory path. If None, uses figures_dir as base
+    figures_path : str
+        Full path to save the figure (including filename)
     
     Returns
     -------
     str
         Path to the saved plot file
     """
-    if current_dir is None:
-        current_dir = os.path.dirname(figures_dir)
-    
     # Loss plotting and stability analysis
     train_loss = np.array(history_dict['loss'])
     val_loss = np.array(history_dict['val_loss'])
@@ -52,9 +43,6 @@ def plot_training_history(history_dict, seed, figures_dir, current_dir=None):
     window = 10
     train_ma = pd.Series(train_loss).rolling(window).mean()
     val_ma = pd.Series(val_loss).rolling(window).mean()
-
-    # Create Figures directory if it doesn't exist
-    os.makedirs(figures_dir, exist_ok=True)
 
     # Plot both losses
     plt.figure(figsize=(12, 8))
@@ -85,11 +73,10 @@ def plot_training_history(history_dict, seed, figures_dir, current_dir=None):
     plt.tight_layout()
     
     # Save plot
-    plot_path = os.path.join(figures_dir, f"loss_with_val_improved_seed{seed}_mixed_new_sigma_beta.png")
-    plt.savefig(plot_path, dpi=300)
+    plt.savefig(figures_path, dpi=300)
     plt.close()
     
-    return plot_path
+    return figures_path
 
 def analyze_training_performance(history_dict, verbose=True):
     """
@@ -148,7 +135,7 @@ def analyze_training_performance(history_dict, verbose=True):
     
     return results
 
-def plot_bayesflow_loss(history_dict, seed, figures_dir):
+def plot_bayesflow_loss(history_dict, figures_path):
     """
     Create bayesflow-style loss plot.
     
@@ -156,10 +143,8 @@ def plot_bayesflow_loss(history_dict, seed, figures_dir):
     ----------
     history_dict : dict
         Dictionary containing training history
-    seed : int
-        Random seed used for training (for filename)
-    figures_dir : str
-        Directory to save figures
+    figures_path : str
+        Full path to save the figure (including filename)
     
     Returns
     -------
@@ -173,73 +158,26 @@ def plot_bayesflow_loss(history_dict, seed, figures_dir):
     plot = bf.diagnostics.plots.loss(history=mock_history)
     
     # Save plot
-    plot_path = os.path.join(figures_dir, f'loss_plot_seed{seed}_mixed_new_sigma_beta.png')
-    plot.savefig(plot_path)
+    plot.savefig(figures_path)
     
-    return plot_path
-
-def generate_training_plots_and_analysis(history_dict, seed, current_dir, verbose=True):
-    """
-    Generate all training plots and analysis.
-    
-    Parameters
-    ----------
-    history_dict : dict
-        Dictionary containing training history
-    seed : int
-        Random seed used for training
-    current_dir : str
-        Current directory path
-    verbose : bool, optional
-        Whether to print analysis results
-    
-    Returns
-    -------
-    dict
-        Dictionary containing paths to saved plots and analysis results
-    """
-    if history_dict is None:
-        if verbose:
-            print("No training history available for plotting.")
-        return None
-    
-    if verbose:
-        print("Generating plots and analysis...")
-    
-    # Create Figures directory
-    figures_dir = os.path.join(current_dir, 'Figures')
-    os.makedirs(figures_dir, exist_ok=True)
-    
-    results = {}
-    
-    # Generate main training plot
-    main_plot_path = plot_training_history(history_dict, seed, figures_dir, current_dir)
-    results['main_plot_path'] = main_plot_path
-    if verbose:
-        print(f"Saved improved loss plot: {main_plot_path}")
-    
-    # Perform analysis
-    analysis_results = analyze_training_performance(history_dict, verbose=verbose)
-    results['analysis'] = analysis_results
-    
-    # Generate bayesflow plot
-    bf_plot_path = plot_bayesflow_loss(history_dict, seed, figures_dir)
-    results['bayesflow_plot_path'] = bf_plot_path
-    if verbose:
-        print(f"Saved bayesflow loss plot: {bf_plot_path}")
-    
-    return results
+    return figures_path
 
 # =====================================================================================
 # Original plotting functions
 
-def simulated_data_check(sim_data, name_prefix= 'sim', save_dir= 'figures'):
+def simulated_data_check(sim_data, rt_path, p300_path):
     """
     Plots the simulated data from BayesFlow simulator output
+    
+    Parameters
+    ----------
+    sim_data : dict
+        Simulated data dictionary
+    rt_path : str
+        Full path to save RT distribution plot (including filename)
+    p300_path : str
+        Full path to save P300 distribution plot (including filename)
     """
-    # Create save directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
-
     # Extract RTs and P300s from the dictionary structure
     choicert = sim_data["choicert"].flatten()
     z = sim_data["z"].flatten()
@@ -247,11 +185,11 @@ def simulated_data_check(sim_data, name_prefix= 'sim', save_dir= 'figures'):
     # Plot RTs
     plt.figure(figsize=(8, 6))
     sns.kdeplot(choicert, fill=True, color='blue')
-    plt.title("Simulated Choice RT")
+    plt.title("Simulated Choice RTd")
     plt.xlabel("Choice RT")
     plt.ylabel("Density")
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f'{name_prefix}_rt_distribution.png'), dpi=300)
+    plt.savefig(rt_path, dpi=300)
     plt.close()
 
     # Plot P300s
@@ -261,10 +199,11 @@ def simulated_data_check(sim_data, name_prefix= 'sim', save_dir= 'figures'):
     plt.xlabel("P300 Amplitude")
     plt.ylabel("Density")
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f"{name_prefix}_P300_distribution.png"), dpi=300)
+    plt.savefig(p300_path, dpi=300)
     plt.close()
 
-    print(f"Plots saved to {save_dir}")
+    print(f"RT plot saved to {rt_path}")
+    print(f"P300 plot saved to {p300_path}")
 
 def calibration_histogram(
     estimates: Mapping[str, np.ndarray] | np.ndarray,
