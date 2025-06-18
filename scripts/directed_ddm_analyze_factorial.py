@@ -1,3 +1,11 @@
+"""
+Analyze directed DDM results for factorial data
+
+Usage:
+> uv run scripts/directed_ddm_analyze_factorial.py --prefix ddmdata_
+> uv run scripts/directed_ddm_analyze_factorial.py --prefix cross_directed_
+"""
+
 # =====================================================================================
 # Import modules
 from pathlib import Path

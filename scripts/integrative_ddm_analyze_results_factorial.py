@@ -37,7 +37,7 @@ from integrative_model.simulation import prior, likelihood
 from integrative_model.analysis import calibration_histogram
 from shared.plots import recovery_plot, compute_recovery_metrics
 
-CHECKPOINT = "checkpoint_integrative_ddm_seed_12_150e.keras"
+CHECKPOINT = "checkpoint_integrative_ddm_seed_12_200e.keras"
 
 # =====================================================================================
 # Setup paths and directories

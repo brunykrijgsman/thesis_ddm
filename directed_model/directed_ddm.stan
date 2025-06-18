@@ -22,10 +22,10 @@ data {
 
 parameters {
     // Subject-level DDM parameters
-    vector<lower=0.001, upper=3>[nparts] alpha;    // Threshold separation (per participant)
-    vector<lower=0.001, upper=0.99>[nparts] beta;  // Starting point bias (per participant)
-    vector<lower=0.5, upper=1>[nparts] tau_raw;    // Raw non-decision time truncated (per participant)
-    vector<lower=0.001, upper=5>[nparts] eta;      // Within-trial noise ensure eta > 0 (per participant)
+    vector<lower=0.001, upper=3>[nparts] alpha;     // Threshold separation (per participant)
+    vector<lower=0.001, upper=0.99>[nparts] beta;   // Starting point bias (per participant)
+    vector<lower=0.5, upper=1>[nparts] tau_raw;     // Raw non-decision time truncated (per participant)
+    vector<lower=0.001, upper=5>[nparts] eta;       // Within-trial noise ensure eta > 0 (per participant)
     vector[nparts] mu_z;                            // Latent variable mean (per participant)
     vector<lower=0.1>[nparts] sigma_z;              // Latent variable SD ensure sigma_z > 0 (per participant)
     vector[nparts] lambda;                          // Effect of z on drift rate (per participant)
@@ -50,17 +50,17 @@ transformed parameters {
 // ------------------------------------------------------------------------------
 model {
     // Priors
-    alpha ~ normal(1, 0.5);
-    beta ~ normal(0.5, 0.25);
-    tau_raw ~ normal(0.3, 0.1);
+    alpha ~ normal(1.5, 0.3);
+    beta ~ normal(0.5, 0.2);
+    tau_raw ~ normal(0.4, 0.1);
     mu_z ~ normal(0, 1);
     sigma_z ~ normal(0, 1) T[0, ];
-    lambda ~ normal(0, 0.2);
-    b ~ normal(0, 0.2);
+    lambda ~ normal(0, 1);
+    b ~ normal(0, 1);
 
     // Within-trial noise
     for (i in 1:nparts) {
-        eta[i] ~ normal(0, 0.2) T[0, ];
+        eta[i] ~ normal(0, 1) T[0, ];
     }
 
     // Latent variable
