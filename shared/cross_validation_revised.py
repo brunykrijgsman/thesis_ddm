@@ -73,16 +73,16 @@ def integrative_to_directed_ddm(integrative_data):
     # mu_z = 0
     mu_z = np.zeros((1, nparts))
 
-    # sigma_z = sqrt(gamma^2 * eta_delta^2 + sigma^2
+    # sigma_z = sqrt(gamma^2 * eta_delta^2 + sigma^2)
     sigma_z = np.sqrt(integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2)
 
-    # eta_delta / sqrt(gamma^2 * eta_delta^2 + sigma^2)
+    # lambda_param = eta_delta / sqrt(gamma^2 * eta_delta^2 + sigma^2)
     lambda_param = integrative_data['eta_delta'] / np.sqrt(integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2)
 
     # eta = sqrt(eta_delta^2 – gamma^2 * sigma_z^2)
     eta = np.sqrt(integrative_data['eta_delta']**2 - integrative_data['gamma']**2 * sigma_z**2)
 
-    # mu_delta * (1 - lambda * gamma)
+    # b = mu_delta * (1 - lambda * gamma)
     b_value = integrative_data['mu_delta'] * (1 - lambda_param * integrative_data['gamma'])
 
 
