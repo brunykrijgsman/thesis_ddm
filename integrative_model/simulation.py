@@ -87,13 +87,13 @@ def prior():
         return truncnorm.rvs(a, b, loc=mean, scale=std)
 
     # Uniform sample parameters
-    alpha = np.random.uniform(0.5,2.0)
-    tau = np.random.uniform(.1,1)
+    alpha = np.random.uniform(0.5, 2.0)
+    tau = np.random.uniform(0.1, 1)
     beta = truncated_normal(0.5, 0.25, 0.001, 0.99)
-    mu_delta = np.random.normal(0,1)
-    eta_delta = np.random.uniform(0,2)
+    mu_delta = np.random.normal(0, 1)
+    eta_delta = np.random.uniform(0, 2)
     gamma = np.random.uniform(-3, 3)
-    sigma = (np.abs(np.random.normal(0.5, 0.5)))
+    sigma = np.abs(np.random.normal(0.5, 0.5))
     
     # Return dictionary of parameters
     return dict(

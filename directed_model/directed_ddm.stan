@@ -27,7 +27,7 @@ parameters {
     vector<lower=0.5, upper=1>[nparts] tau_raw;     // Raw non-decision time truncated (per participant)
     vector<lower=0.001, upper=5>[nparts] eta;       // Within-trial noise ensure eta > 0 (per participant)
     vector[nparts] mu_z;                            // Latent variable mean (per participant)
-    vector<lower=0.1>[nparts] sigma_z;              // Latent variable SD ensure sigma_z > 0 (per participant)
+    vector<lower=0.001>[nparts] sigma_z;            // Latent variable SD ensure sigma_z > 0 (per participant)
     vector[nparts] lambda;                          // Effect of z on drift rate (per participant)
     vector[nparts] b;                               // Drift rate baseline (per participant)
 }

@@ -16,7 +16,7 @@ def prior(nparts):
     sigma_z = np.abs(np.random.normal(0.5, 0.5, size=nparts))
     b = np.random.normal(0, 1, size=nparts)
     eta = np.random.uniform(0, 1, size=nparts)
-    lambda_param = np.random.normal(-3, 3, size=nparts)
+    lambda_param = np.random.uniform(-3, 3, size=nparts)
 
     return dict(
         alpha=alpha,
