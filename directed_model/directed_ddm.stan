@@ -60,7 +60,7 @@ model {
 
     // Within-trial noise
     for (i in 1:nparts) {
-        eta[i] ~ normal(0, 1) T[0, ];
+        eta[i] ~ normal(0, 0.2) T[0, ];
     }
 
     // Latent variable

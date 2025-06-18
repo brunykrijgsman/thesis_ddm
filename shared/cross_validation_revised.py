@@ -14,8 +14,17 @@ def directed_to_integrative_ddm(directed_data):
     # FROM: 'alpha', 'tau', 'beta', 'mu_z', 'sigma_z', 'lambda_param', 'b', 'eta'
     # TO: 'alpha', 'tau', 'beta', 'mu_delta', 'eta_delta', 'gamma', 'sigma'
 
+    # mu_delta = b (because mu_z = 0)
+    mu_delta = directed_data['b']
+
+    # eta_delta = sqrt(lambda_param^2 * sigma_z^2 + eta^2)
     eta_delta = np.sqrt(directed_data['lambda_param']**2 * directed_data['sigma_z']**2 + directed_data['eta']**2)
-    gamma = directed_data['lambda_param'] * directed_data['sigma_z']**2 / eta_delta**2
+
+    # gamma = sigma_z / sqrt(lambda^2 * sigma_z^2 + eta^2)
+    gamma = directed_data['sigma_z'] / np.sqrt(directed_data['lambda_param']**2 * directed_data['sigma_z']**2 + directed_data['eta']**2)
+
+    # sigma = sqrt(sigma_z^2 - gamma^2 * eta_delta^2)
+    sigma = np.sqrt(directed_data['sigma_z']**2 - gamma**2 * eta_delta**2)
 
     new_integrative_data = {
         # Core parameters stay the same
@@ -23,18 +32,10 @@ def directed_to_integrative_ddm(directed_data):
         'beta': directed_data['beta'],
         'tau': directed_data['tau'],
 
-        # mu_delta = b (because mu_z = 0)
-        'mu_delta': directed_data['b'],
-
-        # eta_delta^2 = lambda_param^2 * sigma_z^2 + eta^2
-        # eta_delta = sqrt(lambda_param^2 * sigma_z^2 + eta^2)
+        'mu_delta': mu_delta,
         'eta_delta': eta_delta,
-
-        # gamma = lambda * sigma_z^2 / eta_delta^2
         'gamma': gamma,
-
-        # sigma = sqrt(sigma_z^2 - gamma^2 * eta_delta^2)
-        'sigma': np.sqrt(directed_data['sigma_z']**2 - gamma**2 * eta_delta**2),
+        'sigma': sigma,
 
         # Other parameters
         'rt': directed_data['rt'],
@@ -69,12 +70,21 @@ def integrative_to_directed_ddm(integrative_data):
     
     nparts = np.squeeze(integrative_data['nparts'])
 
-    # Pre-compute parameters per the algebra
-    sigma_z2 = integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2
-    sigma_z  = np.sqrt(sigma_z2)
-    lambda_param = integrative_data['gamma'] * integrative_data['eta_delta']**2 / sigma_z2
-    eta = np.sqrt(integrative_data['eta_delta']**2 * integrative_data['sigma']**2 / sigma_z2)
+    # mu_z = 0
+    mu_z = np.zeros((1, nparts))
+
+    # sigma_z = sqrt(gamma^2 * eta_delta^2 + sigma^2
+    sigma_z = np.sqrt(integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2)
+
+    # eta_delta / sqrt(gamma^2 * eta_delta^2 + sigma^2)
+    lambda_param = integrative_data['eta_delta'] / np.sqrt(integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2)
+
+    # eta = sqrt(eta_delta^2 – gamma^2 * sigma_z^2)
+    eta = np.sqrt(integrative_data['eta_delta']**2 - integrative_data['gamma']**2 * sigma_z**2)
+
+    # mu_delta * (1 - lambda * gamma)
     b_value = integrative_data['mu_delta'] * (1 - lambda_param * integrative_data['gamma'])
+
 
     new_directed_data = {
         # Core parameters stay the same
@@ -82,14 +92,10 @@ def integrative_to_directed_ddm(integrative_data):
         'beta': integrative_data['beta'],
         'tau': integrative_data['tau'],
 
-        'mu_z': np.zeros((1, nparts)),
-
+        'mu_z': mu_z,
         'sigma_z': sigma_z,
-
         'lambda_param': lambda_param,
-
         'b': b_value,
-
         'eta': eta,
 
         'rt': integrative_data['rt'],
