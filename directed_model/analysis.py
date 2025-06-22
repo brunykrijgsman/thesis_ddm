@@ -109,11 +109,6 @@ def generate_predicted_data(fit, df, participants, true_y, n_trials):
     predicted_y = []
     predicted_z = []
 
-    # Compute mean values for parameters
-    # lambda_sample = df['lambda'].mean() 
-    # mu_z_sample = df['mu_z'].mean()           
-    # sigma_z_sample = df['sigma_z'].mean()     
-
     # Generate predicted data for each trial
     for i in range(n_trials):
         participant = participants[i]
@@ -159,10 +154,10 @@ def posterior_predictive_check(observed_data, predicted_data, name):
     fig = plt.figure(figsize=(8, 6))
 
     # Plot the observed data
-    sns.histplot(observed_data, label='Observed', stat='density', kde=True, color='blue')
+    sns.histplot(observed_data, label='Observed', stat='density', color='orange')
 
     # Plot the predicted data
-    sns.histplot(predicted_data, label='Predicted', stat='density', kde=True, color='orange')
+    sns.kdeplot(predicted_data, label='Predicted', color='blue')
 
     # Add title and legend
     plt.title(f"Posterior Predictive Check - {name}")
