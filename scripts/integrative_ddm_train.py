@@ -36,10 +36,10 @@ FIGURES_DIR = INTEGRATIVE_MODEL_DIR / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Define a suffix for model and history files
-model_name = f"integrative_ddm_seed_{SEED}"
+model_name = f"integrative_ddm_seed_{SEED}_new_sigma_150epochs"
 
 # Set checkpoint path relative to current file - include seed in filename
-CHECKPOINT_PATH = CHECKPOINTS_DIR / f"checkpoint_{model_name}.keras"
+CHECKPOINT_PATH = CHECKPOINTS_DIR / f"checkpoint_{model_name}_150epochs.keras"
 
 # =====================================================================================
 # Main training 
@@ -86,7 +86,7 @@ else:
     print("No checkpoint found, creating new approximator...")
 
     history = workflow.fit_online(
-        epochs=200, 
+        epochs=150, 
         batch_size=64, 
         num_batches_per_epoch=200, 
         validation_data=10000
@@ -121,7 +121,7 @@ else:
     
     # Generate main training plot
     main_plot_path = plot_training_history(history_dict, 
-                                          str(FIGURES_DIR / f'loss_with_val_improved_seed_{SEED}.png'))
+                                          str(FIGURES_DIR / f'loss_with_val_improved_seed_{SEED}_150epochs.png'))
     results['main_plot_path'] = main_plot_path
     print(f"Saved improved loss plot: {main_plot_path}")
     
@@ -131,6 +131,6 @@ else:
     
     # Generate bayesflow plot
     bf_plot_path = plot_bayesflow_loss(history_dict, 
-                                      str(FIGURES_DIR / f'loss_plot_seed_{SEED}.png'))
+                                      str(FIGURES_DIR / f'loss_plot_seed_{SEED}_150epochs.png'))
     results['bayesflow_plot_path'] = bf_plot_path
     print(f"Saved bayesflow loss plot: {bf_plot_path}")

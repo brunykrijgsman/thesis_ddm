@@ -13,11 +13,10 @@ sys.path.append(str(PROJECT_ROOT))
 from directed_model.analysis import (
     check_convergence,
     plot_trace_grids,
-    generate_predicted_data,
-    posterior_predictive_check,
     extract_parameter_samples,
 )
-from shared.plots import recovery_plot
+from directed_model.analysis_ppc import posterior_predictive_check
+from shared.plots import recovery_plot, compute_recovery_metrics
 
 # =====================================================================================
 # Parse command line arguments
@@ -56,6 +55,7 @@ print(f"Results directory: {RESULTS_DIR}")
 # Load data and results
 # Load true parameters from the simulation
 genparam = sio.loadmat(data_file)
+print("Available keys in .mat file:", genparam.keys())
 true_alpha = np.squeeze(genparam["alpha"])
 true_tau = np.squeeze(genparam["tau"])
 true_beta = np.squeeze(genparam["beta"])
@@ -76,7 +76,6 @@ csv_files = sorted(RESULTS_DIR.glob("*.csv"))
 if not csv_files:
     print(f"No CSV files found in {RESULTS_DIR}, exiting.")
     sys.exit()
-
 fit = from_csv([str(p) for p in csv_files])
 
 # Extract posterior samples
@@ -104,7 +103,6 @@ for param_name, fig in trace_figures.items():
     plt.close(fig)
 
 # =====================================================================================
-# Create directory for recovery plots
 # Parameters to plot recovery for
 params = {
     "alpha": true_alpha,
@@ -134,29 +132,22 @@ plt.close(f)
 
 # =====================================================================================
 # Posterior Predictive Checks
-# Generate posterior predictive data
-predicted_y, predicted_z = generate_predicted_data(
-    fit, df, participants, true_y, n_trials=len(true_z)
-)
+true_params = {
+    "alpha": true_alpha,
+    "tau": true_tau,
+    "beta": true_beta,
+    "eta": true_eta,
+    "mu_z": true_mu_z,
+    "sigma_z": true_sigma_z,
+    "lambda": true_lambda,
+    "b": true_b,
+}
 
-# Perform posterior predictive check for y
-fig_y = posterior_predictive_check(true_y, predicted_y, name="y")
-fig_y.savefig(FIGURES_DIR / "posterior_predictive_check_y.png", dpi=300)
-plt.close(fig_y)
+fig = posterior_predictive_check(fit, df, participants, true_y, true_z, nparts, conditions_data=None)
 
-# Summary statistics for y
-print(f"Mean of observed y: {np.mean(true_y):.4f}")
-print(f"Mean of predicted y: {np.mean(predicted_y):.4f}")
-print(f"Variance of observed y: {np.var(true_y):.4f}")
-print(f"Variance of predicted y: {np.var(predicted_y):.4f}")
+fig.savefig(FIGURES_DIR / "posterior_predictive_checks_combined.png", dpi=300)
+plt.close(fig)
 
-# Perform posterior predictive check for z
-fig_z = posterior_predictive_check(true_z, predicted_z, name="z")
-fig_z.savefig(FIGURES_DIR / "posterior_predictive_check_z.png", dpi=300)
-plt.close(fig_z)
-
-# Summary statistics for z
-print(f"Mean of observed z: {np.mean(true_z):.4f}")
-print(f"Mean of predicted z: {np.mean(predicted_z):.4f}")
-print(f"Variance of observed z: {np.var(true_z):.4f}")
-print(f"Variance of predicted z: {np.var(predicted_z):.4f}")
+# =====================================================================================
+# Extended Recovery Metrics
+compute_recovery_metrics(post_draws, val_sims)

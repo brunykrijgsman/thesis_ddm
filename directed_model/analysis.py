@@ -109,11 +109,6 @@ def generate_predicted_data(fit, df, participants, true_y, n_trials):
     predicted_y = []
     predicted_z = []
 
-    # Compute mean values for parameters
-    # lambda_sample = df['lambda'].mean() 
-    # mu_z_sample = df['mu_z'].mean()           
-    # sigma_z_sample = df['sigma_z'].mean()     
-
     # Generate predicted data for each trial
     for i in range(n_trials):
         participant = participants[i]
@@ -148,27 +143,146 @@ def generate_predicted_data(fit, df, participants, true_y, n_trials):
     return np.array(predicted_y), np.array(predicted_z)
 
 # =====================================================================================
-# Posterior Predictive Check Function
-def posterior_predictive_check(observed_data, predicted_data, name):  
+# Comprehensive Posterior Predictive Check Function
+def posterior_predictive_check(fit, df, participants, true_y, true_z, true_params, nparts):
     """
-    This function performs a posterior predictive check by comparing the observed data
-    with the predicted data generated from the model's posterior samples.
-    Returns the figure instead of saving it.
+    Performs comprehensive posterior predictive checks with both in-sample and out-of-sample data.
+    
+    Parameters:
+    - fit: CmdStanMCMC fit object
+    - df: DataFrame with posterior samples
+    - participants: Array of participant IDs for each trial
+    - true_y: Array of observed choice/RT data
+    - true_z: Array of observed latent variable data
+    - true_params: Dictionary with true parameter values (alpha, tau, beta, eta, mu_z, sigma_z, lambda, b)
+    - nparts: Number of participants
+    
+    Returns:
+    - fig: Combined 2x2 subplot figure with in-sample and out-of-sample PPCs
     """
-    # Create a figure for the posterior predictive check
-    fig = plt.figure(figsize=(8, 6))
+    
+    # In-sample data (original training data)
+    train_y = true_y
+    train_z = true_z
+    train_participants = participants
 
-    # Plot the observed data
-    sns.histplot(observed_data, label='Observed', stat='density', kde=True, color='blue')
+    # Generate completely new out-of-sample data using the same true parameters
+    print("Generating new out-of-sample data using true parameters...")
+    # Save current random state to restore later
+    current_state = np.random.get_state()
+    # Set a different seed for PPC simulation only
+    np.random.seed(5202)
 
-    # Plot the predicted data
-    sns.histplot(predicted_data, label='Predicted', stat='density', kde=True, color='orange')
+    test_y = []
+    test_z = []
+    test_participants = []
 
-    # Add title and legend
-    plt.title(f"Posterior Predictive Check - {name}")
-    plt.legend()
-    plt.grid(False)
+    for p in range(nparts):
+        # Use true parameters for this participant to simulate new data
+        n_trials_per_participant = np.sum(participants == (p + 1))
+        
+        # Simulate new data using true parameters
+        simulated_y, _, simulated_z = simul_directed_ddm(
+            ntrials=n_trials_per_participant,
+            alpha=true_params["alpha"][p],
+            tau=true_params["tau"][p],
+            beta=true_params["beta"][p],
+            eta=true_params["eta"][p],
+            lambda_param=true_params["lambda"][p],
+            mu_z=true_params["mu_z"][p],
+            sigma_z=true_params["sigma_z"][p],
+            b=true_params["b"][p]
+        )
+        
+        # Store the new simulated data
+        test_y.extend(simulated_y)
+        test_z.extend(simulated_z)
+        test_participants.extend([p + 1] * n_trials_per_participant)
+
+    # Restore the original random state
+    np.random.set_state(current_state)
+
+    # Convert to arrays
+    test_y = np.array(test_y)
+    test_z = np.array(test_z)
+    test_participants = np.array(test_participants)
+
+    print(f"Generated {len(test_y)} new out-of-sample trials")
+
+    # In-sample predictions (on original training data)
+    predicted_y_train, predicted_z_train = generate_predicted_data(
+        fit, df, train_participants, train_y, n_trials=len(train_z)
+    )
+
+    # Out-of-sample predictions (on newly simulated data)
+    predicted_y_test, predicted_z_test = generate_predicted_data(
+        fit, df, test_participants, test_y, n_trials=len(test_z)
+    )
+
+    # Create combined posterior predictive check plot (2x2 subplots)
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+
+    # Set font sizes
+    title_fontsize = 18
+    label_fontsize = 14
+    legend_fontsize = 12
+    tick_fontsize = 12
+
+    # In-sample PPC for y
+    sns.histplot(train_y, label='Observed', stat='density', color='orange', ax=axes[0, 0])
+    sns.kdeplot(predicted_y_train, label='Predicted', color='blue', ax=axes[0, 0])
+    axes[0, 0].set_title("In-Sample Choice/RT (y)", fontsize=title_fontsize, fontweight='bold')
+    axes[0, 0].set_xlabel("Signed RT", fontsize=label_fontsize)
+    axes[0, 0].set_ylabel("Density", fontsize=label_fontsize)
+    axes[0, 0].legend(fontsize=legend_fontsize)
+    axes[0, 0].tick_params(labelsize=tick_fontsize)
+    axes[0, 0].grid(False)
+
+    # In-sample PPC for z
+    sns.histplot(train_z, label='Observed', stat='density', color='orange', ax=axes[0, 1])
+    sns.kdeplot(predicted_z_train, label='Predicted', color='blue', ax=axes[0, 1])
+    axes[0, 1].set_title("In-Sample Latent Variable (z)", fontsize=title_fontsize, fontweight='bold')
+    axes[0, 1].set_xlabel("Latent Variable (z)", fontsize=label_fontsize)
+    axes[0, 1].set_ylabel("Density", fontsize=label_fontsize)
+    axes[0, 1].tick_params(labelsize=tick_fontsize)
+    axes[0, 1].grid(False)
+
+    # Out-of-sample PPC for y
+    sns.histplot(test_y, label='Observed', stat='density', color='orange', ax=axes[1, 0])
+    sns.kdeplot(predicted_y_test, label='Predicted', color='blue', ax=axes[1, 0])
+    axes[1, 0].set_title("Out-of-Sample Choice/RT (y)", fontsize=title_fontsize, fontweight='bold')
+    axes[1, 0].set_xlabel("Signed RT", fontsize=label_fontsize)
+    axes[1, 0].set_ylabel("Density", fontsize=label_fontsize)
+    axes[1, 0].tick_params(labelsize=tick_fontsize)
+    axes[1, 0].grid(False)
+
+    # Out-of-sample PPC for z
+    sns.histplot(test_z, label='Observed', stat='density', color='orange', ax=axes[1, 1])
+    sns.kdeplot(predicted_z_test, label='Predicted', color='blue', ax=axes[1, 1])
+    axes[1, 1].set_title("Out-of-Sample Latent Variable (z)", fontsize=title_fontsize, fontweight='bold')
+    axes[1, 1].set_xlabel("Latent Variable (z)", fontsize=label_fontsize)
+    axes[1, 1].set_ylabel("Density", fontsize=label_fontsize)
+    axes[1, 1].tick_params(labelsize=tick_fontsize)
+    axes[1, 1].grid(False)
+
     plt.tight_layout()
+
+    # Print summary statistics
+    print(f"In-sample metrics for y:")
+    print(f"Mean observed y: {np.mean(train_y):.2f}, predicted: {np.mean(predicted_y_train):.2f}")
+    print(f"Variance observed y: {np.var(train_y):.2f}, predicted: {np.var(predicted_y_train):.2f}")
+
+    print(f"In-sample metrics for z:")
+    print(f"Mean observed z: {np.mean(train_z):.2f}, predicted: {np.mean(predicted_z_train):.2f}")
+    print(f"Variance observed z: {np.var(train_z):.2f}, predicted: {np.var(predicted_z_train):.2f}")
+
+    print(f"Out-of-sample metrics for y:")
+    print(f"Mean observed y: {np.mean(test_y):.2f}, predicted: {np.mean(predicted_y_test):.2f}")
+    print(f"Variance observed y: {np.var(test_y):.2f}, predicted: {np.var(predicted_y_test):.2f}")
+
+    print(f"Out-of-sample metrics for z:")
+    print(f"Mean observed z: {np.mean(test_z):.2f}, predicted: {np.mean(predicted_z_test):.2f}")
+    print(f"Variance observed z: {np.var(test_z):.2f}, predicted: {np.var(predicted_z_test):.2f}")
 
     return fig
 

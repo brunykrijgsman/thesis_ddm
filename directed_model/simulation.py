@@ -80,22 +80,22 @@ def simul_directed_ddm(ntrials=100, alpha=1, tau=0.4, beta=0.5, eta=0.3,
     choice = np.zeros(ntrials)
     
     # Generate latent P300 factors
-    if noise_distribution == 'gaussian':
-        z = np.random.normal(mu_z, sigma_z, ntrials)
+    if noise_distribution == 'gaussian' or noise_distribution == 'base':
+        z_value = np.random.normal(mu_z, sigma_z, ntrials)
     elif noise_distribution == 'laplace':
         # Laplace (var = 2*b^2) → b = sigma / sqrt(2)
         b_laplace = sigma_z / np.sqrt(2)
-        z = np.random.laplace(mu_z, b_laplace, ntrials)
+        z_value = np.random.laplace(mu_z, b_laplace, ntrials)
     elif noise_distribution == 'uniform':
         # Uniform (var = (b - a)^2 / 12) → range = sqrt(12)*sigma
         a_uniform = mu_z -np.sqrt(3) * sigma_z
         b_uniform = mu_z + np.sqrt(3) * sigma_z
-        z = np.random.uniform(a_uniform, b_uniform, ntrials)
+        z_value = np.random.uniform(a_uniform, b_uniform, ntrials)
     else:
         raise ValueError(f"Unknown distribution: {noise_distribution}")
 
     # Calculate individual drift rates including P300 influence and trial-to-trial variability
-    drift_rates = np.random.normal(lambda_param * z + b, eta, ntrials)
+    drift_rates = np.random.normal(lambda_param * z_value + b, eta, ntrials)
     
     # Initialize arrays for storing random walks
     random_walks = np.zeros((nsteps, ntrials))
@@ -136,7 +136,7 @@ def simul_directed_ddm(ntrials=100, alpha=1, tau=0.4, beta=0.5, eta=0.3,
     result = rts * choice
     
     # Returns results, random walks, and z values
-    return result, random_walks, z 
+    return result, random_walks, z_value 
 
 
 def generate_directed_ddm_data(ntrials=100, nparts=100, 
@@ -209,35 +209,20 @@ def generate_directed_ddm_data(ntrials=100, nparts=100,
         else:
             raise ValueError(f"Unknown SNR condition: {snr}")
         
-        # Sample z_true based on distribution condition
-        if dist == 'gaussian' or dist == 'base':
-            z_true = np.random.normal(mu_z[p], sigma_z_condition, ntrials)
-        elif dist == 'laplace':
-            b_laplace = sigma_z_condition / np.sqrt(2)
-            z_true = np.random.laplace(mu_z[p], b_laplace, ntrials)
-        elif dist == 'uniform':
-            a_uniform = mu_z[p] - np.sqrt(3) * sigma_z_condition
-            b_uniform = mu_z[p] + np.sqrt(3) * sigma_z_condition
-            z_true = np.random.uniform(a_uniform, b_uniform, ntrials)
-        else:
-            raise ValueError(f"Unknown distribution: {dist}")
-        
-        # Store z values
-        z = z_true
-        
         # Simulate response time and accuracy
-        signed_rt, _, _ = simul_directed_ddm(
+        signed_rt, _, z_sim = simul_directed_ddm(
             ntrials=ntrials,
             alpha=alpha[p],
             tau=tau[p],
             beta=beta[p],
             eta=eta[p],
             mu_z=mu_z[p],
-            sigma_z=sigma_z[p],
+            sigma_z=sigma_z_condition,
+            noise_distribution=dist,
             lambda_param=lambda_param[p],
             b=b[p]
         )
-        
+
         accuracy = np.sign(signed_rt)
         response_time = np.abs(signed_rt)
         
@@ -248,7 +233,7 @@ def generate_directed_ddm_data(ntrials=100, nparts=100,
         rt[start:end] = response_time
         acc[start:end] = (accuracy + 1) / 2
         participant[start:end] = p + 1
-        z_all[start:end] = z
+        z_all[start:end] = z_sim
         indextrack += ntrials
     
     # Compute min RT per participant

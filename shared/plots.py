@@ -144,7 +144,14 @@ def compute_recovery_metrics(post_draws, val_sims):
         samples = post_draws[param_name].squeeze()
         true_values = true_values.squeeze()
         
+        if true_values is None or samples is None:
+            continue
+        
         posterior_means = samples.mean(axis=1)
+
+        if np.any(np.isnan(posterior_means)) or np.any(np.isnan(true_values)):
+            print(f"Skipping {param_name} because of NaN values")
+            continue
 
         # R²
         r, _ = pearsonr(true_values, posterior_means)
