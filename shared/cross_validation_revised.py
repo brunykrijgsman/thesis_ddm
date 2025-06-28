@@ -118,8 +118,6 @@ def integrative_to_directed_ddm(integrative_data):
         else:
             corr_delta_z[p] = 0
     
-    print(f"Empirical correlation between delta and z: {corr_delta_z}")
-
     # mu_z = 0 (assumption in directed model)
     mu_z = np.zeros((1, nparts))
 
@@ -130,7 +128,8 @@ def integrative_to_directed_ddm(integrative_data):
     lambda_param = corr_delta_z * (integrative_data['eta_delta'] / np.sqrt(integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2))
 
     # eta = sqrt(eta_delta^2 – gamma^2 * sigma_z^2)
-    eta = np.sqrt(integrative_data['eta_delta']**2 - integrative_data['gamma']**2 * sigma_z**2)
+    # eta = eta_delta * sqrt(1 - corr_delta_z)
+    eta = integrative_data['eta_delta'] * np.sqrt(1 - corr_delta_z)
 
     # b = mu_delta * (1 - lambda * gamma)
     b_value = integrative_data['mu_delta'] * (1 - lambda_param * integrative_data['gamma'])

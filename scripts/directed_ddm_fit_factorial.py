@@ -1,3 +1,17 @@
+"""
+Directed DDM Fitting Script for Factorial Data
+
+This script fits the directed drift-diffusion model (DDM) to factorial experimental data.
+
+Examples:
+    Fit to standard factorial data:
+    > uv run scripts/directed_ddm_fit_factorial.py --prefix ddmdata_
+
+    Fit to cross-validated factorial data:
+    > uv run scripts/directed_ddm_fit_factorial.py --prefix cross_directed_ddm_data_
+
+"""
+
 # =====================================================================================
 # Import modules
 import sys
@@ -20,7 +34,7 @@ DATA_DIR = DIRECTED_MODEL_DIR / 'data'
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Fit directed DDM to factorial data')
 parser.add_argument('--prefix', type=str, default='ddmdata_', 
-                    help='Glob prefix for data files (default: ddmdata_)')
+                    help='Glob prefix for data files (default: ddmdata_). Use cross_directed_ddm_data_ for cross-validated data.')
 args = parser.parse_args()
 
 # Get all mat files using the specified prefix

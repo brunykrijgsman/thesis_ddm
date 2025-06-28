@@ -44,31 +44,26 @@ def plot_training_history(history_dict, figures_path):
     train_ma = pd.Series(train_loss).rolling(window).mean()
     val_ma = pd.Series(val_loss).rolling(window).mean()
 
+    # Set font sizes
+    title_fontsize = 18
+    label_fontsize = 14
+    legend_fontsize = 12
+    tick_fontsize = 12
+
     # Plot both losses
-    plt.figure(figsize=(12, 8))
-    
+    plt.figure(figsize=(15, 8))
+
     # Main loss plot
-    plt.subplot(2, 1, 1)
     plt.plot(train_loss, label="Train Loss", alpha=0.4)
     plt.plot(train_ma, label=f"Train MA ({window})", color='blue', linewidth=2)
     plt.plot(val_loss, label="Val Loss", alpha=0.4)
     plt.plot(val_ma, label=f"Val MA ({window})", color='orange', linewidth=2)
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Train vs. Validation Loss")
-    plt.legend()
+    plt.xlabel("Epoch", fontsize=label_fontsize)
+    plt.ylabel("Loss", fontsize=label_fontsize)
+    plt.title("Train vs. Validation Loss", fontsize=title_fontsize)
+    plt.legend(fontsize=legend_fontsize)
     plt.grid(False)
     
-    # Learning rate plot if available
-    plt.subplot(2, 1, 2)
-    if 'lr' in history_dict:
-        plt.plot(history_dict['lr'], label="Learning Rate", color='green')
-        plt.xlabel("Epoch")
-        plt.ylabel("Learning Rate")
-        plt.title("Learning Rate Schedule")
-        plt.legend()
-        plt.grid(False)
-        plt.yscale('log')
     
     plt.tight_layout()
     
@@ -129,9 +124,9 @@ def analyze_training_performance(history_dict, verbose=True):
         # Check for overfitting
         if results['overfitting_detected'] is not None:
             if results['overfitting_detected']:
-                print("⚠️  WARNING: Validation loss is trending upward - potential overfitting detected!")
+                print("WARNING: Validation loss is trending upward - potential overfitting detected!")
             else:
-                print("✅ Validation loss appears stable or improving")
+                print("Validation loss appears stable or improving")
     
     return results
 
@@ -213,10 +208,10 @@ def calibration_histogram(
     figsize: Sequence[float] = None,
     num_bins: int = 10,
     binomial_interval: float = 0.99,
-    label_fontsize: int = 16,
+    label_fontsize: int = 14,
     title_fontsize: int = 18,
     tick_fontsize: int = 12,
-    color: str = "#132a70",
+    color: str = "#a1cff0",
     num_col: int = None,
     num_row: int = None,
 ) -> plt.Figure:
@@ -224,7 +219,7 @@ def calibration_histogram(
     (SBC) checks according to [1].
 
     Any deviation from uniformity indicates miscalibration and thus poor convergence
-    of the networks or poor combination between generative model / networks.
+    of the networks or poor combination between generative model/networks.
 
     [1] Talts, S., Betancourt, M., Simpson, D., Vehtari, A., & Gelman, A. (2018).
     Validating Bayesian inference algorithms with simulation-based calibration.
@@ -294,12 +289,12 @@ def calibration_histogram(
     ratio = int(num_sims / num_draws)
 
     # Log a warning if N/B ratio recommended by Talts et al. (2018) < 20
-    if ratio < 20:
-        logging.warning(
-            "The ratio of simulations / posterior draws should be > 20 "
-            f"for reliable variance reduction, but your ratio is {ratio}. "
-            "Confidence intervals might be unreliable!"
-        )
+    # if ratio < 20:
+        # logging.warning(
+        #     "The ratio of simulations / posterior draws should be > 20 "
+        #     f"for reliable variance reduction, but your ratio is {ratio}. "
+        #     "Confidence intervals might be unreliable!"
+        # )
 
     # Set num_bins automatically, if nothing provided
     if num_bins is None:
@@ -319,9 +314,9 @@ def calibration_histogram(
     mean = num_trials / num_bins  # corresponds to binom.mean(N, 1 / num_bins)
 
     for j, ax in enumerate(plot_data["axes"].flat):
-        # Skip plot if axes go out of bounds of ranks
-        if j >= ranks.shape[1]:
-            break
+        if j >= ranks.shape[1] or j == 7:  # Skip the 8th plot (index 7)
+            ax.set_visible(False)
+            continue
         ax.axhspan(endpoints[0], endpoints[1], facecolor="gray", alpha=0.3)
         ax.axhline(mean, color="gray", zorder=0, alpha=0.9)
         sns.histplot(ranks[:, j], kde=False, ax=ax, color=color, bins=num_bins, alpha=0.95)

@@ -37,7 +37,7 @@ from integrative_model.simulation import prior, likelihood
 from integrative_model.analysis import calibration_histogram
 from shared.plots import recovery_plot, compute_recovery_metrics
 
-CHECKPOINT = "checkpoint_integrative_ddm_seed_12_200e.keras"
+CHECKPOINT = "checkpoint_integrative_ddm_seed_12_new_sigma_150epochs_150epochs.keras"
 
 # =====================================================================================
 # Setup paths and directories
@@ -89,6 +89,7 @@ for matlab_file in matlab_files:
     # Extract condition name from filename
     condition_name = matlab_file.stem.replace(f"{args.prefix}", "")
 
+    # Create output directory for the figures
     figdir = FIGURES_ROOT / condition_name
     figdir.mkdir(parents=True, exist_ok=True)
 
@@ -178,24 +179,6 @@ for matlab_file in matlab_files:
 
     # Filter reshaped_data to only include parameter keys
     val_sims_params = {k: v for k, v in reshaped_data.items() if k in parameter_names}
-
-    # Calibration ECDF plot
-    print(f"post_draws: {post_draws.keys()}")
-    print(f"reshaped_data: {reshaped_data.keys()}")
-    print(f"val_sims_params: {val_sims_params.keys()}")
-    print(f"parameter_names: {parameter_names}")
-
-    ecdf = bf.diagnostics.plots.calibration_ecdf(
-        estimates=post_draws,
-        targets=val_sims_params,
-        variable_names=parameter_names,
-        difference=True,
-        rank_type="distance",
-    )
-    ecdf_filename = f"calibration_ecdf_{condition_name}.png"
-    ecdf.savefig(figdir / ecdf_filename)
-    print(f"Saved calibration ECDF: {ecdf_filename}")
-    plt.close(ecdf)  # Close figure to free memory
 
     # Calibration histogram
     sbc = calibration_histogram(

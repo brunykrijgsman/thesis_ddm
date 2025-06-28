@@ -23,7 +23,6 @@ import scipy.io as sio
 from directed_model.analysis import (
     check_convergence,
     plot_trace_grids,
-    generate_predicted_data,
     posterior_predictive_check,
     extract_parameter_samples,
 )
@@ -151,25 +150,23 @@ for mat_path in mat_files:
         plt.close(fig)
 
     # =====================================================================================
-    # Posterior predictive checks
-    n_trials = len(true_vals["z"])
-    predicted_y, predicted_z = generate_predicted_data(
-        fit, df, participants, true_vals["y"], n_trials=n_trials
+    # Posterior Predictive Checks
+    true_params = {
+        "alpha": true_vals["alpha"],
+        "tau": true_vals["tau"],
+        "beta": true_vals["beta"],
+        "eta": true_vals["eta"],
+        "mu_z": true_vals["mu_z"],
+        "sigma_z": true_vals["sigma_z"],
+        "lambda": true_vals["lambda"],
+        "b": true_vals["b"],
+    }
+
+    fig = posterior_predictive_check(
+        fit, df, participants, true_vals["y"], true_vals["z"], true_params, nparts
     )
-
-    # Plot for y
-    fig_y = posterior_predictive_check(true_vals["y"], predicted_y, name="y")
-    fig_y.savefig(fig_dir / "posterior_predictive_check_y.png", dpi=300)
-    plt.close(fig_y)
-
-    # Plot for z
-    fig_z = posterior_predictive_check(true_vals["z"], predicted_z, name="z")
-    fig_z.savefig(fig_dir / "posterior_predictive_check_z.png", dpi=300)
-    plt.close(fig_z)
-
-    # Print summary stats
-    print(f"y Observed: {np.mean(true_vals['y']):.3f}, Predicted: {np.mean(predicted_y):.3f}")
-    print(f"z Observed: {np.mean(true_vals['z']):.3f}, Predicted: {np.mean(predicted_z):.3f}")
+    fig.savefig(fig_dir / "posterior_predictive_checks_combined.png", dpi=300)
+    plt.close(fig)
 
     # =====================================================================================
     # Extended Recovery Metrics

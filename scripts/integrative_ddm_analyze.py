@@ -33,7 +33,7 @@ from integrative_model.simulation import prior, likelihood
 from integrative_model.analysis import calibration_histogram
 from shared.plots import recovery_plot, compute_recovery_metrics
 
-CHECKPOINT = "checkpoint_integrative_ddm_seed_12_new_sigma.keras"
+CHECKPOINT = "checkpoint_integrative_ddm_seed_12_new_sigma_150epochs_150epochs.keras"
 
 # =====================================================================================
 # Setup paths and directories
@@ -85,7 +85,7 @@ print("Performing recovery analysis...")
 # Generate recovery plot
 f = recovery_plot(post_draws, val_sims)
 if f is not None:
-    recovery_filename = "recovery_plot_new_sigma.png"
+    recovery_filename = "recovery_plot_new_sigma_150epochs_150epochs.png"
     f.savefig(figdir / recovery_filename)
     print(f"Saved recovery plot: {recovery_filename}")
 
@@ -114,7 +114,7 @@ ecdf = bf.diagnostics.plots.calibration_ecdf(
     difference=True,
     rank_type="distance",
 )
-ecdf_filename = "calibration_ecdf_new_sigma.png"
+ecdf_filename = "calibration_ecdf_new_sigma_150epochs_150epochs.png"
 ecdf.savefig(figdir / ecdf_filename)
 print(f"Saved calibration ECDF: {ecdf_filename}")
 plt.close(ecdf)  # Close figure to free memory
@@ -129,7 +129,7 @@ sbc = calibration_histogram(
     label_fontsize=16,
     title_fontsize=18,
 )
-sbc_filename = "calibration_histogram_new_sigma.png"
+sbc_filename = "calibration_histogram_new_sigma_150epochs_150epochs.png"
 sbc.savefig(figdir / sbc_filename)
 print(f"Saved calibration histogram: {sbc_filename}")
 plt.close(sbc)  # Close figure to free memory   

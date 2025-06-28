@@ -93,7 +93,7 @@ def prior():
     mu_delta = np.random.normal(0, 1)
     eta_delta = np.random.uniform(0, 2)
     gamma = np.random.uniform(-3, 3)
-    sigma = np.abs(np.random.normal(0.5, 0.5))
+    sigma = np.random.uniform(0, 2)
     
     # Return dictionary of parameters
     return dict(
