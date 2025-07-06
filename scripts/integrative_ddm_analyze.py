@@ -6,7 +6,7 @@ for default conditions including recovery plots, posterior predictive checks,
 and simulation-based calibration.
 
 Usage:
-> uv run python scripts/integrative_ddm_analyze.py
+> uv run scripts/integrative_ddm_analyze.py
 """
 
 # =====================================================================================
@@ -33,7 +33,7 @@ from integrative_model.simulation import prior, likelihood
 from integrative_model.analysis import calibration_histogram
 from shared.plots import recovery_plot, compute_recovery_metrics
 
-CHECKPOINT = "checkpoint_integrative_ddm_seed_12_new_sigma_150epochs_150epochs.keras"
+CHECKPOINT = "checkpoint_integrative_ddm_seed_12_150epochs.keras"
 
 # =====================================================================================
 # Setup paths and directories
@@ -72,11 +72,9 @@ print("Generating samples for analysis...")
 num_samples = 2000
 # Simulate validation data (unseen during training)
 val_sims = simulator.sample(100)
-print(f"Validation simulation shapes: {val_sims['alpha'].shape}, {val_sims['choicert'].shape}")
 
 # Obtain num_samples samples of the parameter posterior for every validation dataset
 post_draws = approximator.sample(conditions=val_sims, num_samples=num_samples)
-print(f"Posterior draws shapes: {post_draws['alpha'].shape}")
 
 # =====================================================================================
 # Recovery analysis
@@ -85,7 +83,7 @@ print("Performing recovery analysis...")
 # Generate recovery plot
 f = recovery_plot(post_draws, val_sims)
 if f is not None:
-    recovery_filename = "recovery_plot_new_sigma_150epochs_150epochs.png"
+    recovery_filename = "recovery_plot_150epochs.png"
     f.savefig(figdir / recovery_filename)
     print(f"Saved recovery plot: {recovery_filename}")
 
@@ -114,7 +112,7 @@ ecdf = bf.diagnostics.plots.calibration_ecdf(
     difference=True,
     rank_type="distance",
 )
-ecdf_filename = "calibration_ecdf_new_sigma_150epochs_150epochs.png"
+ecdf_filename = "calibration_ecdf_150epochs.png"
 ecdf.savefig(figdir / ecdf_filename)
 print(f"Saved calibration ECDF: {ecdf_filename}")
 plt.close(ecdf)  # Close figure to free memory
@@ -129,7 +127,7 @@ sbc = calibration_histogram(
     label_fontsize=16,
     title_fontsize=18,
 )
-sbc_filename = "calibration_histogram_new_sigma_150epochs_150epochs.png"
+sbc_filename = "calibration_histogram_150epochs.png"
 sbc.savefig(figdir / sbc_filename)
 print(f"Saved calibration histogram: {sbc_filename}")
 plt.close(sbc)  # Close figure to free memory   

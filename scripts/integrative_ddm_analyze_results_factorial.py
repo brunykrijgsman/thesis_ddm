@@ -5,7 +5,7 @@ This script performs analysis of the integrative drift-diffusion model (DDM)
 including recovery plots, posterior predictive checks, and simulation-based calibration.
 
 Analyze results for factorial data
-> uv run scripts/integrative_ddm_analyze_results_factorial.py --prefix integrative_ddm_
+> uv run scripts/integrative_ddm_analyze_results_factorial.py --prefix integrative_ddm_data_
 
 Analyze results for cross-validated factorial data
 > uv run scripts/integrative_ddm_analyze_results_factorial.py --prefix cross_integrative_ddm_data_
@@ -37,7 +37,7 @@ from integrative_model.simulation import prior, likelihood
 from integrative_model.analysis import calibration_histogram
 from shared.plots import recovery_plot, compute_recovery_metrics
 
-CHECKPOINT = "checkpoint_integrative_ddm_seed_12_new_sigma_150epochs_150epochs.keras"
+CHECKPOINT = "checkpoint_integrative_ddm_seed_12_150epochs.keras"
 
 # =====================================================================================
 # Setup paths and directories
@@ -79,6 +79,11 @@ print(f"Found {len(matlab_files)} .mat files to process with prefix '{args.prefi
 # Define variable names for analysis
 parameter_names = ["alpha", "tau", "beta", "mu_delta", "eta_delta", "gamma", "sigma"]
 
+# =====================================================================================
+# Initialize combined gamma datasets
+combined_gamma_estimates = {}  # estimates[condition_name] = np.ndarray
+combined_gamma_targets = {}    # targets[condition_name] = np.ndarray
+
 # Simulate validation data once (unseen during training)
 val_sims = simulator.sample(50)
 print(f"Validation simulation shapes: {val_sims['alpha'].shape}, {val_sims['choicert'].shape}")
@@ -87,7 +92,10 @@ print(f"Validation simulation shapes: {val_sims['alpha'].shape}, {val_sims['choi
 # Loop through all MATLAB files
 for matlab_file in matlab_files:
     # Extract condition name from filename
-    condition_name = matlab_file.stem.replace(f"{args.prefix}", "")
+    base_name = matlab_file.stem
+    condition_name = base_name.replace(f"{args.prefix}", "")
+    if base_name.startswith("cross_"):
+        condition_name = f"cross_{condition_name}"
 
     # Create output directory for the figures
     figdir = FIGURES_ROOT / condition_name
@@ -138,34 +146,17 @@ for matlab_file in matlab_files:
     post_draws = approximator.sample(conditions=reshaped_data, num_samples=ntrials)
 
     # =====================================================================================
+    # Store gamma data for combined analysis
+    combined_gamma_estimates[condition_name] = post_draws["gamma"]
+    combined_gamma_targets[condition_name] = reshaped_data["gamma"]
+
+    # =====================================================================================
     # Recovery analysis for current condition
     print(f"Performing recovery analysis for {condition_name}...")
 
     split_estimates = post_draws.copy()
     split_targets = reshaped_data.copy()
-    
-    # Handle gamma parameter for high coupling conditions (only for recovery plots)
-    high_coupling = "COUP_high" in condition_name
-    if high_coupling:
-        print(f"Splitting gamma plots for {condition_name}...")
-        
-        gamma_samples = split_estimates['gamma'].squeeze()  # Shape: (n_participants, n_draws)
-        gamma_true = split_targets['gamma'].squeeze()  # Flatten to match shape
 
-        neg_idx = np.where(gamma_true < 0)[0]
-        pos_idx = np.where(gamma_true >= 0)[0]
-
-        if len(neg_idx) > 0:
-            split_estimates['gamma_negative'] = gamma_samples[neg_idx, :]
-            split_targets['gamma_negative'] = gamma_true[neg_idx]
-
-        if len(pos_idx) > 0:
-            split_estimates['gamma_positive'] = gamma_samples[pos_idx, :]
-            split_targets['gamma_positive'] = gamma_true[pos_idx]
-
-        del split_estimates['gamma']
-        del split_targets['gamma']
-    
     # Generate recovery plot
     f = recovery_plot(split_estimates, split_targets)
     if f is not None:
@@ -199,16 +190,41 @@ for matlab_file in matlab_files:
     # Compute recovery metrics
     print(f"\nComputing recovery metrics for {condition_name}...")
 
-    if high_coupling:
-        split_parameter_names = ["alpha", "tau", "beta", "mu_delta", "eta_delta", "gamma_negative", "gamma_positive", "sigma"]
-    else:
-        split_parameter_names = ["alpha", "tau", "beta", "mu_delta", "eta_delta", "gamma", "sigma"]
-
+    split_parameter_names = ["alpha", "tau", "beta", "mu_delta", "eta_delta", "gamma", "sigma"]
     val_sims_params = {k: v for k, v in split_targets.items() if k in split_parameter_names}
     compute_recovery_metrics(split_estimates, val_sims_params)
 
     # =====================================================================================
     print(f"Completed analysis for {condition_name}")
+
+# =====================================================================================
+# Process combined gamma datasets
+
+# Create condition display title mapping for combined plots
+condition_display_titles = {
+    'SNR_low_COUP_low_DIST_gaussian': r'Gaussian, Low SNR, Low Coupling',
+    'SNR_low_COUP_low_DIST_laplace': r'Laplace, Low SNR, Low Coupling',
+    'SNR_low_COUP_low_DIST_uniform': r'Uniform, Low SNR, Low Coupling',
+
+    'SNR_high_COUP_low_DIST_gaussian': r'Gaussian, High SNR, Low Coupling',
+    'SNR_high_COUP_low_DIST_laplace': r'Laplace, High SNR, Low Coupling',
+    'SNR_high_COUP_low_DIST_uniform': r'Uniform, High SNR, Low Coupling',
+
+    'SNR_low_COUP_high_DIST_gaussian': r'Gaussian, Low SNR, High Coupling',
+    'SNR_low_COUP_high_DIST_laplace': r'Laplace, Low SNR, High Coupling',
+    'SNR_low_COUP_high_DIST_uniform': r'Uniform, Low SNR, High Coupling',  
+
+    'SNR_high_COUP_high_DIST_gaussian': r'Gaussian, High SNR, High Coupling',
+    'SNR_high_COUP_high_DIST_laplace': r'Laplace, High SNR, High Coupling',
+    'SNR_high_COUP_high_DIST_uniform': r'Uniform, High SNR, High Coupling',
+}
+
+print(f"\n===  Recovery Plot for all gammas ===")
+print(f"Conditions: {list(combined_gamma_estimates.keys())}")
+fig_gamma = recovery_plot(combined_gamma_estimates, combined_gamma_targets, 
+                         parameter_display_titles=condition_display_titles, fig_height=12, fig_width=15.5)
+fig_gamma.savefig(FIGURES_ROOT / f"recovery_plot_combined_gamma_{args.prefix}.png", dpi=300)
+plt.close(fig_gamma)
 
 print(f"\n{'='*80}")
 print("Analysis complete for all conditions!")

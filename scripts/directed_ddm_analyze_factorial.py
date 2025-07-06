@@ -52,10 +52,20 @@ if not mat_files:
 
 print(f"Found {len(mat_files)} .mat files to process with prefix '{args.prefix}'")
 
+# =====================================================================================
+# Initialize combined lambda datasets
+combined_lambda_estimates = {}  # estimates[condition_name] = np.ndarray
+combined_lambda_targets = {}    # targets[condition_name] = np.ndarray
+
 # Loop over all .mat files
 for mat_path in mat_files:
     base_name = mat_path.stem
     condition_name = base_name.replace(f"{args.prefix}", "")
+    
+    # Handle cases where there's an extra 'ddm_data_' prefix after removing the main prefix
+    if condition_name.startswith("ddm_data_"):
+        condition_name = condition_name.replace("ddm_data_", "")
+    
     print(f"\n=== Analyzing condition: {condition_name} ===")
 
     # Prepare directories
@@ -69,7 +79,7 @@ for mat_path in mat_files:
         print(f"No CSV files found in {result_path}, skipping.")
         continue
 
-    fig_dir = FIGURES_ROOT / condition_name
+    fig_dir = FIGURES_ROOT / base_name
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     # Load Stan results
@@ -117,37 +127,13 @@ for mat_path in mat_files:
         val_sims[param_name] = val
 
     # Parameter recovery plots
-    if "COUP_high" in condition_name:
-        print(f"Splitting lambda plots for {condition_name}...")
+    combined_lambda_estimates[condition_name] = post_draws["lambda"]
+    combined_lambda_targets[condition_name] = val_sims["lambda"]
 
-        lambda_samples = post_draws["lambda"]  # Shape: (n_participants, n_draws)
-        lambda_true = val_sims["lambda"]
-
-        neg_idx = np.where(lambda_true < 0)[0]
-        pos_idx = np.where(lambda_true >= 0)[0]
-
-        if len(neg_idx) > 0:
-            post_draws["lambda_negative"] = lambda_samples[neg_idx, :]
-            val_sims["lambda_negative"] = lambda_true[neg_idx]
-
-        if len(pos_idx) > 0:
-            post_draws["lambda_positive"] = lambda_samples[pos_idx, :]
-            val_sims["lambda_positive"] = lambda_true[pos_idx]
-
-        # Remove original lambda to avoid triple-plotting
-        del post_draws["lambda"]
-        del val_sims["lambda"]
-
-        # Create recovery plot with all parameters (including both lambda groups)
-        fig = recovery_plot(post_draws, val_sims)
-        fig.savefig(fig_dir / f"{condition_name}_recovery_plot.png", dpi=300)
-        plt.close(fig)
-
-    else:
-        # Regular recovery plot
-        fig = recovery_plot(post_draws, val_sims)
-        fig.savefig(fig_dir / f"{condition_name}_recovery_plot.png", dpi=300)
-        plt.close(fig)
+    # Regular recovery plot
+    fig = recovery_plot(post_draws, val_sims)
+    fig.savefig(fig_dir / f"{condition_name}_recovery_plot.png", dpi=300)
+    plt.close(fig)
 
     # =====================================================================================
     # Posterior Predictive Checks
@@ -171,3 +157,32 @@ for mat_path in mat_files:
     # =====================================================================================
     # Extended Recovery Metrics
     compute_recovery_metrics(post_draws, val_sims)
+
+# =====================================================================================
+# Process combined lambda datasets
+# Create condition display title mapping for combined plots
+# Create condition display title mapping for combined plots
+condition_display_titles = {
+    'SNR_low_COUP_low_DIST_gaussian': r'Gaussian, Low SNR, Low Coupling',
+    'SNR_low_COUP_low_DIST_laplace': r'Laplace, Low SNR, Low Coupling',
+    'SNR_low_COUP_low_DIST_uniform': r'Uniform, Low SNR, Low Coupling',
+
+    'SNR_high_COUP_low_DIST_gaussian': r'Gaussian, High SNR, Low Coupling',
+    'SNR_high_COUP_low_DIST_laplace': r'Laplace, High SNR, Low Coupling',
+    'SNR_high_COUP_low_DIST_uniform': r'Uniform, High SNR, Low Coupling',
+
+    'SNR_low_COUP_high_DIST_gaussian': r'Gaussian, Low SNR, High Coupling',
+    'SNR_low_COUP_high_DIST_laplace': r'Laplace, Low SNR, High Coupling',
+    'SNR_low_COUP_high_DIST_uniform': r'Uniform, Low SNR, High Coupling',  
+
+    'SNR_high_COUP_high_DIST_gaussian': r'Gaussian, High SNR, High Coupling',
+    'SNR_high_COUP_high_DIST_laplace': r'Laplace, High SNR, High Coupling',
+    'SNR_high_COUP_high_DIST_uniform': r'Uniform, High SNR, High Coupling',
+}
+
+print(f"\n===  Recovery Plot for all lambdas ===")
+print(f"Conditions: {list(combined_lambda_estimates.keys())}")
+fig_high = recovery_plot(combined_lambda_estimates, combined_lambda_targets, 
+                        parameter_display_titles=condition_display_titles, fig_height=12, fig_width=15.5)
+fig_high.savefig(FIGURES_ROOT / f"recovery_plot_combined_lambda_{args.prefix}.png", dpi=300)
+plt.close(fig_high)

@@ -36,7 +36,7 @@ FIGURES_DIR = INTEGRATIVE_MODEL_DIR / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Define a suffix for model and history files
-model_name = f"integrative_ddm_seed_{SEED}_new_sigma_150epochs"
+model_name = f"integrative_ddm_seed_{SEED}_150epochs"
 
 # Set checkpoint path relative to current file - include seed in filename
 CHECKPOINT_PATH = CHECKPOINTS_DIR / f"checkpoint_{model_name}_150epochs.keras"

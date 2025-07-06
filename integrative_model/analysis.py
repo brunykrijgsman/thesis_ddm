@@ -41,8 +41,8 @@ def plot_training_history(history_dict, figures_path):
 
     # Moving average window
     window = 10
-    train_ma = pd.Series(train_loss).rolling(window).mean()
-    val_ma = pd.Series(val_loss).rolling(window).mean()
+    train_ma = pd.Series(train_loss).rolling(window, min_periods=1).mean()
+    val_ma = pd.Series(val_loss).rolling(window, min_periods=1).mean()
 
     # Set font sizes
     title_fontsize = 18
@@ -51,7 +51,7 @@ def plot_training_history(history_dict, figures_path):
     tick_fontsize = 12
 
     # Plot both losses
-    plt.figure(figsize=(15, 8))
+    plt.figure(figsize=(15, 5))
 
     # Main loss plot
     plt.plot(train_loss, label="Train Loss", alpha=0.4)
@@ -211,7 +211,7 @@ def calibration_histogram(
     label_fontsize: int = 14,
     title_fontsize: int = 18,
     tick_fontsize: int = 12,
-    color: str = "#a1cff0",
+    color: str = "teal",
     num_col: int = None,
     num_row: int = None,
 ) -> plt.Figure:

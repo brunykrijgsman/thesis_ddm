@@ -17,6 +17,7 @@ dependencies = [
     "numpy<=2.2.0",
     "scikit-learn>=1.7.0",
     "scipy>=1.15.3",
+    "statsmodels>=0.14.4",
     "tensorflow>=2.19.0",
     "tensorflow-metal>=1.2.0 ; sys_platform == 'darwin'",
 ]

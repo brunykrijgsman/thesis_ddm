@@ -28,7 +28,7 @@ def compute_credible_interval_coverage(post_samples, true_values, level=0.95):
     return np.mean(coverage)
 
 # =====================================================================================
-def recovery_plot(estimates, targets):
+def recovery_plot(estimates, targets, fig_width=15, fig_height=9, parameter_display_titles=None):
     """
     Parameter recovery plots: true vs. estimated.
     Includes median, mean, 95% and 99% credible intervals.
@@ -38,13 +38,41 @@ def recovery_plot(estimates, targets):
     estimates : dict[str, np.ndarray]
         Posterior samples per parameter: shape (n_participants, n_samples)
     targets : dict[str, np.ndarray]
-        True parameter values per participant
+        True parameter values per parameter
+    fig_width : int, default=15
+        Figure width in inches
+    fig_height : int, default=9
+        Figure height in inches
+    parameter_display_titles : dict[str, str], optional
+        Mapping from parameter names to display titles. If None, uses default mapping.
     """
-    # Identify parameters 
-    params = list(estimates.keys())
+    # Default parameter display title mapping
+    if parameter_display_titles is None:
+        parameter_display_titles = {
+            'alpha': r'$\alpha$: Boundary separation',
+            'tau': r'$\tau$: Non-decision time',
+            'beta': r'$\beta$: Starting point/bias',
+            'mu_z': r'$\mu_z$: Mean of latent variable',
+            'eta': r'$\eta$: Variance of drift rate',
+            'mu_delta': r'$\mu_{\delta}$: Mean of drift rate',
+            'eta_delta': r'$\eta_{\delta}$: Variance of drift rate',
+            'sigma': r'$\sigma$: S.d. of latent signal',
+            'sigma_z': r'$\sigma_z$: S.d. of latent signal',
+            'lambda': r'$\lambda$: Coupling strength',
+            'gamma': r'$\gamma$: Coupling strength',
+            'b': r'$b$: Baseline drift rate'
+        }
+    
+    # Identify parameters - use order from parameter_display_titles if provided
+    if parameter_display_titles is not None:
+        # Use the order from parameter_display_titles, but only include params that exist in estimates
+        params = [param for param in parameter_display_titles.keys() if param in estimates]
+    else:
+        # Fall back to original order from estimates
+        params = list(estimates.keys())
     
     # Create figure
-    fig = plt.figure(figsize=(15, 10), tight_layout=True)
+    fig = plt.figure(figsize=(fig_width, fig_height), tight_layout=True)
     columns = 3
     rows = int(np.ceil(len(params) / columns))
 
@@ -104,13 +132,9 @@ def recovery_plot(estimates, targets):
         ax.set_xlabel('True')
         ax.set_ylabel('Posterior')
         
-        # Customize title based on parameter type
-        if param == 'gamma':
-            ax.set_title(f"Gamma (r = {r:.2f}, R² = {r_squared:.2f})")
-        elif param == 'lambda':
-            ax.set_title(f"Lambda (r = {r:.2f}, R² = {r_squared:.2f})")
-        else:
-            ax.set_title(f"{param} (r = {r:.2f}, R² = {r_squared:.2f})")
+        # Use display title if available, otherwise use parameter name
+        display_name = parameter_display_titles.get(param, param)
+        ax.set_title(f"{display_name} (r = {r:.2f}, R² = {r_squared:.2f})")
         
         # Add legend
         if i == 0:

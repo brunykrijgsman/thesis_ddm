@@ -6,7 +6,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from shared.cross_validation_revised import directed_to_integrative_ddm, integrative_to_directed_ddm
+from shared.cross_validation import directed_to_integrative_ddm, integrative_to_directed_ddm
 
 # Process all directed model files
 DIRECTED_DATA_DIR = PROJECT_ROOT / 'directed_model' / 'data'
