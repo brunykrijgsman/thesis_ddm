@@ -13,9 +13,9 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from directed_model.simulation import generate_directed_ddm_data, save_simulation_data
+from directed_model.simulation_new_sigma_z import generate_directed_ddm_data, save_simulation_data
 
-DATA_DIR = PROJECT_ROOT / 'directed_model' / 'data'
+DATA_DIR = PROJECT_ROOT / 'directed_model' / 'data_new_sigma_z'
 
 ntrials = 100
 nparts = 100

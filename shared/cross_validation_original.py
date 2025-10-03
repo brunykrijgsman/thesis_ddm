@@ -6,41 +6,56 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
+# Function to convert directed data to integrative data for recovery plotting and analysis
 def directed_to_integrative_ddm(directed_data):
     """
-    Reshape directed data to integrative ddm data.
+    Reshape directed data to integrative DDM data and compute theoretical correlations.
+
+    FROM: 'alpha', 'tau', 'beta', 'mu_z', 'sigma_z', 'lambda_param', 'b', 'eta'
+    TO:   'alpha', 'tau', 'beta', 'mu_delta', 'eta_delta', 'gamma', 'sigma'
     """
     
-    # FROM: 'alpha', 'tau', 'beta', 'mu_z', 'sigma_z', 'lambda_param', 'b', 'eta'
-    # TO: 'alpha', 'tau', 'beta', 'mu_delta', 'eta_delta', 'gamma', 'sigma'
+    # Extract parameters
+    nparts = int(np.squeeze(directed_data['nparts']))
+    z_i = np.ravel(directed_data['z'])
+    participant = np.ravel(directed_data['participant'])  # Assumes participant labels are 1-indexed
+    lambda_param = np.ravel(directed_data['lambda_param'])
+    b = np.ravel(directed_data['b'])
+    eta = np.ravel(directed_data['eta'])
+    sigma_z = np.ravel(directed_data['sigma_z'])
 
-    nparts = np.squeeze(directed_data['nparts'])
+    # Compute theoretical correlation
+    theoretical_corr_delta_z = lambda_param * sigma_z / np.sqrt(lambda_param**2 * sigma_z**2 + eta**2)
 
-    eta_delta = np.sqrt(directed_data['lambda_param']**2 * directed_data['sigma_z']**2 + directed_data['eta']**2)
+    # Compute transformation parameters
+    # mu_delta = b
+    mu_delta = directed_data['b'] 
+    
+    # eta_delta = sqrt(lambda_param^2 * sigma_z^2 + eta^2)
+    eta_delta = np.sqrt(lambda_param**2 * sigma_z**2 + eta**2)
+    
+    # sigma = sigma_z * np.sqrt(1 - corr_delta_z_theoretical**2)
+    sigma = sigma_z * np.sqrt(1 - theoretical_corr_delta_z**2)
+    
+    # gamma = theoretical_corr_delta_z * (sigma_z / eta_delta)
+    gamma = theoretical_corr_delta_z * (sigma_z / eta_delta)
 
     new_integrative_data = {
-        # Core parameters stay the same
+        # Core parameters
         'alpha': directed_data['alpha'],
         'beta': directed_data['beta'],
         'tau': directed_data['tau'],
-
-        # mu_delta = b (because mu_z = 0)
-        'mu_delta': directed_data['b'],
-
-        # eta_delta^2 = lambda_param^2 * sigma_z^2 + eta^2
-        # eta_delta = sqrt(lambda_param^2 * sigma_z^2 + eta^2)
+        
+        # New parameters
+        'mu_delta': mu_delta,
         'eta_delta': eta_delta,
-
-        # gamma = 1 / lambda_param
-        'gamma': 1 / directed_data['lambda_param'],
-
-        # sigma = sqrt(sigma_z^2 - (1 / lambda_param)^2 * eta_delta^2)
-        'sigma': np.sqrt(directed_data['sigma_z']**2 - (1 / directed_data['lambda_param'])**2 * eta_delta**2),
+        'gamma': gamma,
+        'sigma': sigma,
 
         # Other parameters
         'rt': directed_data['rt'],
         'acc': directed_data['acc'],
-        'y': directed_data['y'],
+        'choicert': directed_data['y'],
         'z': directed_data['z'],
         'participant': directed_data['participant'],
         'nparts': directed_data['nparts'],
@@ -48,56 +63,68 @@ def directed_to_integrative_ddm(directed_data):
         'N': directed_data['N'],
         'minRT': directed_data['minRT'],
         'condition': directed_data['condition'],
+
+        # Report theoretical correlation
+        'theoretical_corr_delta_z': theoretical_corr_delta_z,
     }
 
     condition = np.squeeze(new_integrative_data['condition'])
-    print(f"condition: {condition}")
-
-    DATA_DIR = PROJECT_ROOT / 'integrative_model' / 'data'
+    DATA_DIR = PROJECT_ROOT / 'integrative_model' / 'data_new_sigma'
     file_path = DATA_DIR / f"cross_integrative_ddm_data_{condition}.mat"
     sio.savemat(file_path, new_integrative_data)
     print(f"Saved: {file_path}")
 
 
-
+# Function to convert integrative data to directed data
 def integrative_to_directed_ddm(integrative_data):
     """
-    Reshape integrative data to directed data.
+    Reshape integrative data to directed DDM data and compute theoretical correlations.
+
+    FROM: 'alpha', 'tau', 'beta', 'mu_delta', 'eta_delta', 'gamma', 'sigma'
+    TO:   'alpha', 'tau', 'beta', 'mu_z', 'sigma_z', 'lambda_param', 'b', 'eta'
     """
 
-    # FROM: 'alpha', 'tau', 'beta', 'mu_delta', 'eta_delta', 'gamma', 'sigma'
-    # TO: 'alpha', 'tau', 'beta', 'mu_z', 'sigma_z', 'lambda_param', 'b', 'eta'
+    # Extract parameters
+    nparts = int(np.squeeze(integrative_data['nparts']))
+    z_i = np.ravel(integrative_data['z'])
+    mu_delta = np.ravel(integrative_data['mu_delta'])
+    eta_delta = np.ravel(integrative_data['eta_delta'])
+    participant = np.ravel(integrative_data['participant'])
+
+    # Compute theoretical correlation
+    sigma_z = np.sqrt(integrative_data['gamma']**2 * eta_delta**2 + integrative_data['sigma']**2)
+    theoretical_corr_delta_z = (integrative_data['gamma'] * eta_delta) / sigma_z
+
+    # Compute transformation parameters
+    # mu_z = 0
+    mu_z = np.zeros((1, nparts))
     
-    nparts = np.squeeze(integrative_data['nparts'])
+    # lambda_param = theoretical_corr_delta_z * (eta_delta / sigma_z)
+    lambda_param = theoretical_corr_delta_z * (eta_delta / sigma_z)
+    
+    # eta = eta_delta * np.sqrt(1 - theoretical_corr_delta_z**2)
+    eta = eta_delta * np.sqrt(1 - theoretical_corr_delta_z**2)
+    
+    # b_value = mu_delta * (1 - lambda_param * integrative_data['gamma'])
+    b_value = mu_delta * (1 - lambda_param * integrative_data['gamma'])
 
     new_directed_data = {
-        # Core parameters stay the same
+        # Core parameters
         'alpha': integrative_data['alpha'],
         'beta': integrative_data['beta'],
         'tau': integrative_data['tau'],
 
-        # mu_z = 0,
-        'mu_z': 0.0,
+        # Transformed parameters
+        'mu_z': mu_z,
+        'sigma_z': sigma_z,
+        'lambda_param': lambda_param,
+        'b': b_value,
+        'eta': eta,
 
-        # sigma_z^2 = gamma^2 * eta_delta^2 + sigma^2
-        # sigma_z = sqrt(gamma^2 * eta_delta^2 + sigma^2)
-        'sigma_z': np.sqrt(integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2),
-
-        # lambda = 1 / gamma
-        'lambda_param': 1 / integrative_data['gamma'],
-
-        # b = mu_delta, because mu_z = 0
-        'b': integrative_data['mu_delta'], # - integrative_data['lambda_param'] * integrative_data['mu_z'],
-
-        # eta = sqrt(eta_delta^2 - (1 / gamma)^2 * (gamma^2 * eta_delta^2 + sigma^2))
-        # eta = sqrt(eta_delta^2 - (eta_delta^2 + sigma^2/gamma^2)
-        # eta = sqrt(-sigma^2/gamma^2)
-        'eta': np.sqrt(integrative_data['eta_delta']**2 - (1 / integrative_data['gamma'])**2 * 
-        (integrative_data['gamma']**2 * integrative_data['eta_delta']**2 + integrative_data['sigma']**2)),
-
+        # Other parameters
         'rt': integrative_data['rt'],
         'acc': integrative_data['acc'],
-        'y': integrative_data['y'],
+        'y': integrative_data['choicert'],
         'z': integrative_data['z'],
         'participant': integrative_data['participant'],
         'nparts': integrative_data['nparts'],
@@ -105,22 +132,13 @@ def integrative_to_directed_ddm(integrative_data):
         'N': integrative_data['N'],
         'minRT': integrative_data['minRT'],
         'condition': integrative_data['condition'],
+
+        # Report theoretical correlation
+        'theoretical_corr_delta_z': theoretical_corr_delta_z,
     }
 
-
-    for key in integrative_data.keys():
-        value = np.squeeze(integrative_data[key])
-        print(f"integrative_data[{key}]: {value}")
-
-
-    for key in new_directed_data.keys():
-        value = np.squeeze(new_directed_data[key])
-        print(f"new_directed_data[{key}]: {value}")
-
     condition = np.squeeze(new_directed_data['condition'])
-    print(f"condition: {condition}")
-
-    DATA_DIR = PROJECT_ROOT / 'directed_model' / 'data'
+    DATA_DIR = PROJECT_ROOT / 'directed_model' / 'data_new_sigma_z'
     file_path = DATA_DIR / f"cross_directed_ddm_data_{condition}.mat"
     sio.savemat(file_path, new_directed_data)
     print(f"Saved: {file_path}")
