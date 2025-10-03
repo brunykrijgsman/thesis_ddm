@@ -43,8 +43,8 @@ CHECKPOINT = "checkpoint_integrative_ddm_seed_12_150epochs.keras"
 # Setup paths and directories
 INTEGRATIVE_MODEL_DIR = PROJECT_ROOT / "integrative_model"
 CHECKPOINTS_DIR = INTEGRATIVE_MODEL_DIR / "checkpoints"
-FIGURES_ROOT = INTEGRATIVE_MODEL_DIR / "figures"
-DATA_DIR = INTEGRATIVE_MODEL_DIR / "data"
+FIGURES_ROOT = INTEGRATIVE_MODEL_DIR / "figures_new_sigma"
+DATA_DIR = INTEGRATIVE_MODEL_DIR / "data_new_sigma"
 CHECKPOINT_PATH = CHECKPOINTS_DIR / CHECKPOINT
 
 # =====================================================================================
@@ -203,20 +203,46 @@ for matlab_file in matlab_files:
 # Create condition display title mapping for combined plots
 condition_display_titles = {
     'SNR_low_COUP_low_DIST_gaussian': r'Gaussian, Low SNR, Low Coupling',
+    'cross_SNR_low_COUP_low_DIST_gaussian': r'Gaussian, Low SNR, Low Coupling',
     'SNR_low_COUP_low_DIST_laplace': r'Laplace, Low SNR, Low Coupling',
+    'cross_SNR_low_COUP_low_DIST_laplace': r'Laplace, Low SNR, Low Coupling',
     'SNR_low_COUP_low_DIST_uniform': r'Uniform, Low SNR, Low Coupling',
+    'cross_SNR_low_COUP_low_DIST_uniform': r'Uniform, Low SNR, Low Coupling',
 
     'SNR_high_COUP_low_DIST_gaussian': r'Gaussian, High SNR, Low Coupling',
+    'cross_SNR_high_COUP_low_DIST_gaussian': r'Gaussian, High SNR, Low Coupling',
     'SNR_high_COUP_low_DIST_laplace': r'Laplace, High SNR, Low Coupling',
+    'cross_SNR_high_COUP_low_DIST_laplace': r'Laplace, High SNR, Low Coupling',
     'SNR_high_COUP_low_DIST_uniform': r'Uniform, High SNR, Low Coupling',
+    'cross_SNR_high_COUP_low_DIST_uniform': r'Uniform, High SNR, Low Coupling',
 
     'SNR_low_COUP_high_DIST_gaussian': r'Gaussian, Low SNR, High Coupling',
+    'cross_SNR_low_COUP_high_DIST_gaussian': r'Gaussian, Low SNR, High Coupling',
     'SNR_low_COUP_high_DIST_laplace': r'Laplace, Low SNR, High Coupling',
+    'cross_SNR_low_COUP_high_DIST_laplace': r'Laplace, Low SNR, High Coupling',
     'SNR_low_COUP_high_DIST_uniform': r'Uniform, Low SNR, High Coupling',  
+    'cross_SNR_low_COUP_high_DIST_uniform': r'Uniform, Low SNR, High Coupling',  
 
     'SNR_high_COUP_high_DIST_gaussian': r'Gaussian, High SNR, High Coupling',
+    'cross_SNR_high_COUP_high_DIST_gaussian': r'Gaussian, High SNR, High Coupling',
     'SNR_high_COUP_high_DIST_laplace': r'Laplace, High SNR, High Coupling',
+    'cross_SNR_high_COUP_high_DIST_laplace': r'Laplace, High SNR, High Coupling',
     'SNR_high_COUP_high_DIST_uniform': r'Uniform, High SNR, High Coupling',
+    'cross_SNR_high_COUP_high_DIST_uniform': r'Uniform, High SNR, High Coupling',
+
+    'no_SNR_COUP_low_DIST_gaussian': r'Gaussian, Low Coupling',
+    'cross_COUP_low_DIST_gaussian': r'Gaussian, Low Coupling',
+    'no_SNR_COUP_low_DIST_laplace': r'Laplace, Low Coupling',
+    'cross_COUP_low_DIST_laplace': r'Laplace, Low Coupling',
+    'no_SNR_COUP_low_DIST_uniform': r'Uniform, Low Coupling',
+    'cross_COUP_low_DIST_uniform': r'Uniform, Low Coupling',
+
+    'no_SNR_COUP_high_DIST_gaussian': r'Gaussian, High Coupling',
+    'cross_COUP_high_DIST_gaussian': r'Gaussian, High Coupling',
+    'no_SNR_COUP_high_DIST_laplace': r'Laplace, High Coupling',
+    'cross_COUP_high_DIST_laplace': r'Laplace, High Coupling',
+    'no_SNR_COUP_high_DIST_uniform': r'Uniform, High Coupling',
+    'cross_COUP_high_DIST_uniform': r'Uniform, High Coupling',
 }
 
 print(f"\n===  Recovery Plot for all gammas ===")
