@@ -28,7 +28,7 @@ from directed_model.simulation import fit_directed_ddm
 SEED = 2025
 
 DIRECTED_MODEL_DIR = PROJECT_ROOT / 'directed_model'
-DATA_DIR = DIRECTED_MODEL_DIR / 'data'
+DATA_DIR = DIRECTED_MODEL_DIR / 'data_new_sigma_z'
 
 # =====================================================================================
 # Parse command line arguments
@@ -51,7 +51,7 @@ for f in mat_files:
     print(f"\n--- Fitting model to {f} ---")
     
     base = Path(f).stem
-    out_dir = DIRECTED_MODEL_DIR / 'results' / base
+    out_dir = DIRECTED_MODEL_DIR / 'results_new_sigma_z' / base
     
     # Check if results already exist
     if out_dir.exists():

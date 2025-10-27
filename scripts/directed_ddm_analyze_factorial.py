@@ -26,14 +26,14 @@ from directed_model.analysis import (
     posterior_predictive_check,
     extract_parameter_samples,
 )
-from shared.plots import recovery_plot,compute_recovery_metrics
+from shared.plots import recovery_plot, compute_recovery_metrics
 
 # =====================================================================================
 # Set up paths
 DIRECTED_MODEL_DIR = PROJECT_ROOT / "directed_model"
-DATA_DIR = DIRECTED_MODEL_DIR / "data"
-RESULTS_DIR = DIRECTED_MODEL_DIR / "results"
-FIGURES_ROOT = DIRECTED_MODEL_DIR / "figures"
+DATA_DIR = DIRECTED_MODEL_DIR / "data_new_sigma_z"
+RESULTS_DIR = DIRECTED_MODEL_DIR / "results_new_sigma_z"
+FIGURES_ROOT = DIRECTED_MODEL_DIR / "figures_new_sigma_z"
 FIGURES_ROOT.mkdir(exist_ok=True)
 
 # =====================================================================================
@@ -178,6 +178,16 @@ condition_display_titles = {
     'SNR_high_COUP_high_DIST_gaussian': r'Gaussian, High SNR, High Coupling',
     'SNR_high_COUP_high_DIST_laplace': r'Laplace, High SNR, High Coupling',
     'SNR_high_COUP_high_DIST_uniform': r'Uniform, High SNR, High Coupling',
+
+    # No SNR conditions
+    'no_SNR_COUP_low_DIST_gaussian': r'Gaussian, Low Coupling',
+    'no_SNR_COUP_low_DIST_laplace': r'Laplace, Low Coupling',
+    'no_SNR_COUP_low_DIST_uniform': r'Uniform, Low Coupling',
+
+    'no_SNR_COUP_high_DIST_gaussian': r'Gaussian, High Coupling',
+    'no_SNR_COUP_high_DIST_laplace': r'Laplace, High Coupling',
+    'no_SNR_COUP_high_DIST_uniform': r'Uniform, High Coupling',
+
 }
 
 print(f"\n===  Recovery Plot for all lambdas ===")

@@ -119,7 +119,7 @@ def likelihood(alpha, tau, beta, mu_delta, eta_delta, gamma, sigma, n_obs):
         eta_delta: float -- standard deviation of the drift rate
         gamma: float -- P300 response
         sigma: float -- standard deviation of the P300 response
-        N: int -- number of trials
+        n_obs: int -- number of trials
     Returns:
         choicert: float -- choice RT
         z: float -- P300 response
