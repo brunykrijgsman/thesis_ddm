@@ -11,7 +11,10 @@ dependencies = [
     "bayesflow>=2.0.3",
     "cmdstanpy>=1.2.5",
     "ipykernel>=6.29.5",
+    # JAX - CPU version as base
     "jax>=0.6.1",
+    # Platform-specific JAX with GPU support
+    "jax[cuda12-local]>=0.6.1 ; sys_platform == 'linux'",  # For Snellius (GPU)
     "matplotlib>=3.10.3",
     "numba>=0.61.2",
     "numpy<=2.2.0",
