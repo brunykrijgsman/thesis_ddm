@@ -1,16 +1,10 @@
-# SOURCES AND REFERENCES:
-# - Snellius job script guide: https://servicedesk.surf.nl/wiki/spaces/WIKI/pages/30660220/Writing+a+job+script
-# - Snellius partitions and accounting: https://servicedesk.surf.nl/wiki/spaces/WIKI/pages/30660209/Snellius+partitions+and+accounting
-# - Using uv on supercomputers: https://research-software.uit.no/blog/2025-pixi-and-uv/
-# - Example SLURM script: https://github.com/mdnunez/bayesflow_nddms/blob/main/bayesflow_nddms.sh
-
 #!/usr/bin/env bash
 #SBATCH --job-name=ddm_train
-#SBATCH --partition=gpu
+#SBATCH --partition=gpu_h100
 #SBATCH --gpus=1
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=18
+#SBATCH --cpus-per-task=8
 #SBATCH --output=logs/ddm_train-%j.out
 #SBATCH --error=logs/ddm_train-%j.err
 
@@ -19,8 +13,8 @@ set -euf -o pipefail
 # Load CUDA modules
 echo "Loading CUDA modules..."
 module load 2023
-module load CUDA/12.1.1
-module load cuDNN/8.9.2.26-CUDA-12.1.1
+
+module purge
 
 # UV version
 UV_VERSION="0.9.5"
@@ -35,7 +29,7 @@ export KERAS_BACKEND=jax
 export CUDA_VISIBLE_DEVICES=0
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export XLA_PYTHON_CLIENT_ALLOCATOR=platform
-export XLA_FLAGS=--xla_gpu_cuda_data_dir=/sw/arch/RHEL8/EB_production/2023/software/CUDA/12.1.1
+export JAX_PLATFORMS=cuda,cpu
 
 # Print job information
 echo "=========================================="
@@ -62,6 +56,12 @@ if [ ! -e ${SLURM_SUBMIT_DIR}/uv ]; then
 fi
 
 cd ${SLURM_SUBMIT_DIR}
+
+# Ensure any CPU-only JAX is removed before installing GPU wheel
+./uv pip uninstall jax jaxlib -- -y || true
+
+# Install the CUDA wheel (bundles CUDA & cuDNN)
+./uv pip install -U "jax[cuda12]==0.6.1" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # Verify JAX GPU support
 echo "=========================================="
