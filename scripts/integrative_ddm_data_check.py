@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 # Get data path
-data_dir = PROJECT_ROOT / 'integrative_model' / 'data'
+data_dir = PROJECT_ROOT / 'integrative_model' / 'data_new_sigma_new_conditions'
 
 # Load one example data file to examine structure
 example_file = 'integrative_ddm_data_SNR_low_COUP_high_DIST_gaussian.mat'

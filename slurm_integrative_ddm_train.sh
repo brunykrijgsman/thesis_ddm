@@ -10,11 +10,12 @@
 
 set -euf -o pipefail
 
+# Purge existing modules (e.g. for debugging)
+module purge
+
 # Load CUDA modules
 echo "Loading CUDA modules..."
 module load 2023
-
-module purge
 
 # UV version
 UV_VERSION="0.9.5"
@@ -57,8 +58,11 @@ fi
 
 cd ${SLURM_SUBMIT_DIR}
 
+# Create virtual environment
+./uv venv
+
 # Ensure any CPU-only JAX is removed before installing GPU wheel
-./uv pip uninstall jax jaxlib -- -y || true
+./uv pip uninstall -y jax jaxlib || true
 
 # Install the CUDA wheel (bundles CUDA & cuDNN)
 ./uv pip install -U "jax[cuda12]==0.6.1" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
@@ -72,6 +76,7 @@ echo "=========================================="
 # Run training
 echo "Starting training script..."
 ./uv run python scripts/integrative_ddm_train.py
+# ./uv run python scripts/integrative_ddm_train_run_test.py
 
 echo "=========================================="
 echo "Job completed at: $(date)"

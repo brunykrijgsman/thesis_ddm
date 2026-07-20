@@ -32,7 +32,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INTEGRATIVE_MODEL_DIR = PROJECT_ROOT / "integrative_model"
 CHECKPOINTS_DIR = INTEGRATIVE_MODEL_DIR / "checkpoints"
 CHECKPOINTS_DIR.mkdir(parents=True, exist_ok=True)
-FIGURES_DIR = INTEGRATIVE_MODEL_DIR / "figures"
+FIGURES_DIR = INTEGRATIVE_MODEL_DIR / "Figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Define a suffix for model and history files

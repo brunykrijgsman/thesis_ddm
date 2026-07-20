@@ -39,7 +39,7 @@ from integrative_model.analysis import calibration_histogram
 from shared.plots import recovery_plot, compute_recovery_metrics
 
 # Load checkpoint
-CHECKPOINT = "checkpoint_integrative_ddm_seed_12_150epochs.keras"
+CHECKPOINT = "checkpoint_integrative_ddm_seed_12_variable_trials.keras"
 
 # =====================================================================================
 # Setup paths and directories

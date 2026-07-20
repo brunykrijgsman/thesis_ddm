@@ -31,9 +31,22 @@ archive/
 
 
 figures/
+Figures/
 
 directed_model/data/
 directed_model/results/
+directed_model/figures/
+directed_model/Figures
 
 integrative_model/data/
+integrative_model/data_new_sigma_new_conditions/
 integrative_model/checkpoints/
+integrative_model/figures/
+integrative_model/Figures/
+integrative_model/figures_new_sigma_new_conditions/
+
+directed_model/figures/
+directed_model/Figures/
+
+integrative_model/figures/
+integrative_model/Figures/

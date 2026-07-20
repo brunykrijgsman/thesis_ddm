@@ -1,5 +1,5 @@
 [project]
-name = "thesis-ddm"
+name = "single_trial_nddm_compare"
 version = "0.1.0"
 description = ""
 authors = [
